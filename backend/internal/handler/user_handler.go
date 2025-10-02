@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
 	"github.com/dimasrizkyfebrian/coursify/internal/model"
 	"github.com/dimasrizkyfebrian/coursify/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
@@ -93,4 +94,21 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// 6. Kirim token sebagai response
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+}
+
+// GetProfile adalah handler untuk mengambil data profil pengguna (contoh endpoint terproteksi)
+func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	// Ambil user_id dari context yang sudah ditambahkan oleh middleware
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve user ID from context", http.StatusInternalServerError)
+		return
+	}
+
+	// (Untuk sekarang kita hanya kembalikan ID-nya. Nanti kita bisa query ke DB)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Welcome to your profile!",
+		"user_id": userID,
+	})
 }
