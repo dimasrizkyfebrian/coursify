@@ -31,6 +31,7 @@ func main() {
 
 	// Mendefinisikan route untuk API
 	r.Post("/api/register", userHandler.Register)
+	r.Post("/api/login", userHandler.Login)
 
 	port := ":8080"
 	log.Printf("Server is starting on port %s\n", port)

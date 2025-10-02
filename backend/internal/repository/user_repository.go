@@ -37,3 +37,21 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 
 	return nil
 }
+
+// GetUserByEmail mengambil satu user dari DB berdasarkan email
+func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
+	var user model.User
+	query := `SELECT id, full_name, email, password_hash, role, status FROM users WHERE email = $1`
+
+	err := r.DB.QueryRow(query, email).Scan(&user.ID, &user.FullName, &user.Email, &user.PasswordHash, &user.Role, &user.Status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Ini bukan error fatal, hanya user tidak ditemukan
+			return nil, nil
+		}
+		// Error lain saat query
+		return nil, err
+	}
+
+	return &user, nil
+}
