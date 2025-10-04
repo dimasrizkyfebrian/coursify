@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 
 	"github.com/dimasrizkyfebrian/coursify/internal/database"
@@ -20,26 +21,31 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	db := database.ConnectDB()
+	db := database.ConnectDB() // Database connection
 
-	// Inisialisasi router chi
 	r := chi.NewRouter()
-	r.Use(chiMiddleware.Logger) // Middleware untuk logging request
+	r.Use(chiMiddleware.Logger)
 
-	// Membuat instance dari repository dan handler
+	// CORS configuration
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5173"}, // Allow port 5173
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
+
 	userRepo := repository.NewUserRepository(db)
 	userHandler := handler.NewUserHandler(userRepo)
 
 	// --- Public Routes ---
-	r.Post("/api/register", userHandler.Register)
+	r.With(middleware.RateLimitMiddleware).Post("/api/register", userHandler.Register)
 	r.Post("/api/login", userHandler.Login)
 
 	// --- Protected Routes ---
 	r.Group(func(r chi.Router) {
-		// Terapkan middleware AuthMiddleware
 		r.Use(middleware.AuthMiddleware)
-
-		// Semua route di dalam grup ini akan terproteksi
 		r.Get("/api/profile", userHandler.GetProfile)
 	})
 
