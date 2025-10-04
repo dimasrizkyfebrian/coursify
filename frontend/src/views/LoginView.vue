@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
-import axios from 'axios'
+import api, { isAxiosError } from '@/lib/axios'
 import { toast } from 'vue-sonner'
 
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ const router = useRouter()
 // Function to handle form submission
 async function handleSubmit() {
   try {
-    const response = await axios.post('http://localhost:8080/api/login', {
+    const response = await api.post('http://localhost:8080/api/login', {
       email: email.value,
       password: password.value,
     })
@@ -40,7 +40,7 @@ async function handleSubmit() {
     router.push('/dashboard')
   } catch (error: any) {
     // Handle different error scenarios
-    if (axios.isAxiosError(error) && error.response) {
+    if (isAxiosError(error) && error.response) {
       if (error.response.status === 403) {
         // Handle forbidden error (e.g., account not approved)
         toast.error('Login Failed', {

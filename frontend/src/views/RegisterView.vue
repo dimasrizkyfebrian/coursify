@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import axios from 'axios'
+import api from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,7 @@ const password = ref('')
 // Function to handle form submission
 async function handleSubmit() {
   try {
-    const response = await axios.post('http://localhost:8080/api/register', {
+    const response = await api.post('http://localhost:8080/api/register', {
       full_name: fullName.value,
       email: email.value,
       password: password.value,
