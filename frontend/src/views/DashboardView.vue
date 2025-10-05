@@ -9,13 +9,11 @@ const { user } = useUserStore()
 </script>
 
 <template>
-  <div class="p-8 max-w-4xl mx-auto">
-    <AdminDashboard v-if="user.role === 'admin'" />
-    <InstructorDashboard v-else-if="user.role === 'instructor'" />
-    <StudentDashboard v-else-if="user.role === 'student'" />
+  <AdminDashboard v-if="user.role === 'admin'" />
+  <InstructorDashboard v-else-if="user.role === 'instructor'" />
+  <StudentDashboard v-else-if="user.role === 'student'" />
 
-    <div v-else>
-      <p>Loading user data or role not recognized...</p>
-    </div>
+  <div v-else>
+    <p>Loading user data or role not recognized...</p>
   </div>
 </template>

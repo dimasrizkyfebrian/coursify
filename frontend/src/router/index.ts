@@ -3,6 +3,9 @@ import LandingView from '../views/LandingView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
+import AdminDashboard from '@/components/dashboards/AdminDashboard.vue'
+import InstructorDashboard from '@/components/dashboards/InstructorDashboard.vue'
+import StudentDashboard from '@/components/dashboards/StudentDashboard.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,6 +29,12 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/users',
+      name: 'admin-users',
+      component: AdminDashboard,
       meta: { requiresAuth: true },
     },
   ],
