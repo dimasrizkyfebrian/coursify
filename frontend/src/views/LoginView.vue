@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import api, { isAxiosError } from '@/lib/axios'
 import { toast } from 'vue-sonner'
+import { useUserStore } from '@/stores/user'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +20,7 @@ import { Label } from '@/components/ui/label'
 const email = ref('')
 const password = ref('')
 const router = useRouter()
+const { setUserFromToken } = useUserStore()
 
 // Function to handle form submission
 async function handleSubmit() {
@@ -31,6 +33,7 @@ async function handleSubmit() {
     // Token received from the server
     const token = response.data.token
     localStorage.setItem('authToken', token)
+    setUserFromToken(token)
 
     toast.success('Login successful!', {
       description: 'Redirecting you to the dashboard...',
