@@ -43,7 +43,15 @@ func main() {
 	r.With(middleware.RateLimitMiddleware).Post("/api/register", userHandler.Register)
 	r.Post("/api/login", userHandler.Login)
 
-	// --- Protected Routes ---
+	// --- Protected Admin Routes ---
+	r.Group(func(r chi.Router) {
+	r.Use(middleware.AuthMiddleware)
+	r.Use(middleware.AdminOnly)
+
+	r.Get("/api/admin/users", userHandler.GetPendingUsers)
+})
+	
+	// --- Protected General Routes ---
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
 		r.Get("/api/profile", userHandler.GetProfile)

@@ -98,3 +98,15 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		"user_id": userID,
 	})
 }
+
+func (h *UserHandler) GetPendingUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.Repo.GetUsersByStatus("pending")
+	if err != nil {
+		http.Error(w, "Could not fetch users", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(users)
+}

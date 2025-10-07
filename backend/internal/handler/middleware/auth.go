@@ -9,21 +9,20 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Tipe custom untuk context key agar tidak bentrok
 type contextKey string
-const UserIDKey contextKey = "user_id"
+const (
+	UserIDKey contextKey = "user_id"
+	UserRoleKey contextKey = "user_role"
+)
 
-// AuthMiddleware adalah middleware untuk memvalidasi JWT
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 1. Ambil header Authorization
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			http.Error(w, "Authorization header required", http.StatusUnauthorized)
 			return
 		}
 
-		// 2. Pisahkan "Bearer " dari token
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
 			http.Error(w, "Authorization header must be in format 'Bearer {token}'", http.StatusUnauthorized)
@@ -31,7 +30,6 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		}
 		tokenString := parts[1]
 
-		// 3. Parse dan validasi token
 		claims := &jwt.MapClaims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte(os.Getenv("JWT_SECRET_KEY")), nil
@@ -42,17 +40,29 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// 4. Jika valid, ekstrak user_id dan simpan di context
-		userID, ok := (*claims)["user_id"].(string)
-		if !ok {
+		userID, ok1 := (*claims)["user_id"].(string)
+		userRole, ok2 := (*claims)["role"].(string)
+		if !ok1 || !ok2 {
 			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
 			return
 		}
 
-		// Menambahkan user_id ke dalam context request
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
+		ctx = context.WithValue(ctx, UserRoleKey, userRole)
 
-		// 5. Lanjutkan ke handler berikutnya dengan context yang sudah diperbarui
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func AdminOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role, ok := r.Context().Value(UserRoleKey).(string)
+
+		if !ok || role != "admin" {
+			http.Error(w, "Forbidden: Admins only", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }

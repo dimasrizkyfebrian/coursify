@@ -16,16 +16,14 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{DB: db}
 }
 
-// CreateUser akan melakukan hash password dan menyimpan user baru ke DB
+// Function CreateUser
 func (r *UserRepository) CreateUser(user *model.User) error {
-	// Hash password sebelum disimpan
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 	user.PasswordHash = string(hashedPassword)
 
-	// Query untuk memasukkan user baru
 	query := `INSERT INTO users (full_name, email, password_hash, role)
 	           VALUES ($1, $2, $3, $4)`
 
@@ -38,7 +36,7 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 	return nil
 }
 
-// GetUserByEmail mengambil satu user dari DB berdasarkan email
+// Function GetUserByEmail
 func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	var user model.User
 	query := `SELECT id, full_name, email, password_hash, role, status FROM users WHERE email = $1`
@@ -46,12 +44,32 @@ func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	err := r.DB.QueryRow(query, email).Scan(&user.ID, &user.FullName, &user.Email, &user.PasswordHash, &user.Role, &user.Status)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// Ini bukan error fatal, hanya user tidak ditemukan
 			return nil, nil
 		}
-		// Error lain saat query
 		return nil, err
 	}
 
 	return &user, nil
+}
+
+// Function GetUsersByStatus
+func (r *UserRepository) GetUsersByStatus(status string) ([]model.User, error) {
+	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users WHERE status = $1 ORDER BY created_at ASC`
+
+	rows, err := r.DB.Query(query, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []model.User
+	for rows.Next() {
+		var user model.User
+		if err := rows.Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
 }
