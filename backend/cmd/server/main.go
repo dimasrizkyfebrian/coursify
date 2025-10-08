@@ -49,6 +49,8 @@ func main() {
 	r.Use(middleware.AdminOnly)
 
 	r.Get("/api/admin/users", userHandler.GetPendingUsers)
+	r.Put("/api/admin/users/{id}/approve", userHandler.ApproveUser)
+	r.Put("/api/admin/users/{id}/reject", userHandler.RejectUser)
 })
 	
 	// --- Protected General Routes ---

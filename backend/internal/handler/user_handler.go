@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
 	"github.com/dimasrizkyfebrian/coursify/internal/model"
 	"github.com/dimasrizkyfebrian/coursify/internal/repository"
+	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -109,4 +111,40 @@ func (h *UserHandler) GetPendingUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(users)
+}
+
+// ApproveUser
+func (h *UserHandler) ApproveUser(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "id")
+
+	err := h.Repo.UpdateUserStatus(userID, "active")
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to approve user", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "User approved successfully"})
+}
+
+// RejectUser
+func (h *UserHandler) RejectUser(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "id")
+	
+	err := h.Repo.UpdateUserStatus(userID, "rejected")
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to reject user", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "User rejected successfully"})
 }

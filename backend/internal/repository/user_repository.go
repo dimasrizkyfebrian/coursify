@@ -16,7 +16,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{DB: db}
 }
 
-// Function CreateUser
+// Method CreateUser
 func (r *UserRepository) CreateUser(user *model.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -36,7 +36,7 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 	return nil
 }
 
-// Function GetUserByEmail
+// Method GetUserByEmail
 func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	var user model.User
 	query := `SELECT id, full_name, email, password_hash, role, status FROM users WHERE email = $1`
@@ -52,7 +52,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	return &user, nil
 }
 
-// Function GetUsersByStatus
+// Method GetUsersByStatus
 func (r *UserRepository) GetUsersByStatus(status string) ([]model.User, error) {
 	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users WHERE status = $1 ORDER BY created_at ASC`
 
@@ -72,4 +72,26 @@ func (r *UserRepository) GetUsersByStatus(status string) ([]model.User, error) {
 	}
 
 	return users, nil
+}
+
+// Method UpdateUserStatus
+func (r *UserRepository) UpdateUserStatus(userID, status string) error {
+	query := `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`
+
+	result, err := r.DB.Exec(query, status, userID)
+	if err != nil {
+		log.Printf("Error updating user status: %v", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
