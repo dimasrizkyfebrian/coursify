@@ -6,6 +6,7 @@ import DashboardView from '../views/DashboardView.vue'
 import AdminDashboard from '@/components/dashboards/AdminDashboard.vue'
 import InstructorDashboard from '@/components/dashboards/InstructorDashboard.vue'
 import StudentDashboard from '@/components/dashboards/StudentDashboard.vue'
+import UserManagementView from '../views/admin/UserManagement.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -34,7 +35,7 @@ const router = createRouter({
     {
       path: '/admin/users',
       name: 'admin-users',
-      component: AdminDashboard,
+      component: UserManagementView,
       meta: { requiresAuth: true },
     },
   ],
