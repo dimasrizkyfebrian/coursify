@@ -59,7 +59,7 @@ export const columns: ColumnDef<User>[] = [
   {
     id: 'actions',
     enableHiding: false,
-    cell: ({ row }) => {
+    cell: ({ row, column }) => {
       const user = row.original
 
       return h(
@@ -67,7 +67,6 @@ export const columns: ColumnDef<User>[] = [
         { class: 'relative' },
         h(DropdownAction, {
           user,
-          onExpand: row.toggleExpanded,
         }),
       )
     },

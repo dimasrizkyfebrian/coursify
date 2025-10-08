@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, provide } from 'vue'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 import type { User } from '../../components/pending-users/columns.ts'
@@ -21,6 +21,8 @@ async function fetchPendingUsers() {
 onMounted(() => {
   fetchPendingUsers()
 })
+
+provide('refreshUsers', fetchPendingUsers)
 </script>
 
 <template>

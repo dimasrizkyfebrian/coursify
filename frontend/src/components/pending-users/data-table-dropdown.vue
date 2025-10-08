@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { inject } from 'vue'
 import type { User } from './columns.ts'
+import api from '@/lib/axios'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,15 +18,28 @@ defineProps<{
   user: User
 }>()
 
-function approveUser(userId: string) {
-  toast.success(`Approving user: ${userId}`)
-  // Nanti di sini kita panggil API backend
+const refreshUsers = inject<() => void>('refreshUsers')
+
+async function approveUser(userId: string) {
+  try {
+    const response = await api.put(`/admin/users/${userId}/approve`)
+    toast.success(response.data.message || 'User approved successfully.')
+
+    if (refreshUsers) refreshUsers()
+  } catch (error) {
+    toast.error('Failed to approve user.')
+  }
 }
 
-// 4. Buat fungsi baru untuk rejectUser
-function rejectUser(userId: string) {
-  toast.error(`Rejecting user: ${userId}`)
-  // Nanti di sini kita panggil API backend
+async function rejectUser(userId: string) {
+  try {
+    const response = await api.put(`/admin/users/${userId}/reject`)
+    toast.success(response.data.message || 'User rejected successfully.')
+
+    if (refreshUsers) refreshUsers()
+  } catch (error) {
+    toast.error('Failed to reject user.')
+  }
 }
 </script>
 
