@@ -95,7 +95,7 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Repo.GetUsersByID(userID)
+	user, err := h.Repo.GetUserByID(userID)
 	if err != nil {
 		http.Error(w, "Could not fetch user profile", http.StatusInternalServerError)
 		return
@@ -157,4 +157,22 @@ func (h *UserHandler) RejectUser(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "User rejected successfully"})
+}
+
+func (h *UserHandler) GetUserByIDForAdmin(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "id")
+
+	user, err := h.Repo.GetUserByID(userID)
+	if err != nil {
+		http.Error(w, "Could not fetch user profile", http.StatusInternalServerError)
+		return
+	}
+	if user == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
 }

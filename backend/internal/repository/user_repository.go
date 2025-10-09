@@ -97,7 +97,7 @@ func (r *UserRepository) UpdateUserStatus(userID, status string) error {
 }
 
 // Method GetUsersByID
-func (r *UserRepository) GetUsersByID(userID string) (*model.User, error) {
+func (r *UserRepository) GetUserByID(userID string) (*model.User, error) {
 	var user model.User
 	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users WHERE id = $1`
 
