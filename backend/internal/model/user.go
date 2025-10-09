@@ -2,7 +2,6 @@ package model
 
 import "time"
 
-// User merepresentasikan struktur data pengguna di database
 type User struct {
 	ID           string    `json:"id"`
 	FullName     string    `json:"full_name"`

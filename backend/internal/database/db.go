@@ -6,13 +6,11 @@ import (
 	"log"
 	"os"
 
-	// Import driver pgx secara anonim
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-// ConnectDB berfungsi untuk membuat dan mengembalikan koneksi ke database
+// Method ConnectDB
 func ConnectDB() *sql.DB {
-	// Membuat Data Source Name (DSN) string dari environment variables
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_PORT"),
@@ -22,13 +20,13 @@ func ConnectDB() *sql.DB {
 		os.Getenv("DB_SSLMODE"),
 	)
 
-	// Membuka koneksi ke database
+	// Connection Database
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		log.Fatal("Failed to open a DB connection: ", err)
 	}
 
-	// Memverifikasi koneksi ke database dengan Ping
+	// Verification with ping
 	err = db.Ping()
 	if err != nil {
 		log.Fatal("Failed to ping DB: ", err)

@@ -95,3 +95,19 @@ func (r *UserRepository) UpdateUserStatus(userID, status string) error {
 
 	return nil
 }
+
+// Method GetUsersByID
+func (r *UserRepository) GetUsersByID(userID string) (*model.User, error) {
+	var user model.User
+	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users WHERE id = $1`
+
+	err := r.DB.QueryRow(query, userID).Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}

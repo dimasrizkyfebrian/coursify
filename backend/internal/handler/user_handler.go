@@ -87,6 +87,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
 }
 
+// Get Profile
 func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
@@ -94,13 +95,22 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, err := h.Repo.GetUsersByID(userID)
+	if err != nil {
+		http.Error(w, "Could not fetch user profile", http.StatusInternalServerError)
+		return
+	}
+	if user == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Welcome to your profile!",
-		"user_id": userID,
-	})
+	json.NewEncoder(w).Encode(user)
 }
 
+// Get Pending Users
 func (h *UserHandler) GetPendingUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.Repo.GetUsersByStatus("pending")
 	if err != nil {
@@ -113,7 +123,7 @@ func (h *UserHandler) GetPendingUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
-// ApproveUser
+// Approve User
 func (h *UserHandler) ApproveUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
 
@@ -131,7 +141,7 @@ func (h *UserHandler) ApproveUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "User approved successfully"})
 }
 
-// RejectUser
+// Reject User
 func (h *UserHandler) RejectUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
 	
