@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute, RouterLink } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,6 +14,8 @@ import {
 } from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+
+const { breadcrumbs } = useUserStore()
 </script>
 
 <template>
@@ -25,13 +31,17 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
             <Separator orientation="vertical" class="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem class="hidden md:block">
-                  <BreadcrumbLink href="#"> Dashboard </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator class="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Pending Approval</BreadcrumbPage>
-                </BreadcrumbItem>
+                <template v-for="(crumb, index) in breadcrumbs" :key="crumb.text">
+                  <BreadcrumbItem>
+                    <BreadcrumbLink v-if="index < breadcrumbs.length - 1" as-child>
+                      <RouterLink :to="crumb.to">{{ crumb.text }}</RouterLink>
+                    </BreadcrumbLink>
+                    <BreadcrumbPage v-else>
+                      {{ crumb.text }}
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator v-if="index < breadcrumbs.length - 1" />
+                </template>
               </BreadcrumbList>
             </Breadcrumb>
           </div>

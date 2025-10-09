@@ -30,7 +30,7 @@ const adminLinks = [
     icon: Users,
     isActive: true,
     children: [
-      { title: 'Pending Approval', to: '/admin/users' },
+      { title: 'Pending Approval', to: '/admin/pending-approval' },
       { title: 'All Users', to: '/admin/all-users' },
     ],
   },

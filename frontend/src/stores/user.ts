@@ -2,6 +2,13 @@ import { ref } from 'vue'
 import { jwtDecode } from 'jwt-decode'
 import api from '@/lib/axios'
 
+interface BreadcrumbItem {
+  text: string
+  to: string
+}
+
+const breadcrumbs = ref<BreadcrumbItem[]>([])
+
 // Reactive state
 const user = ref({
   id: null as string | null,
@@ -10,6 +17,10 @@ const user = ref({
   role: null as string | null,
   isLoggedIn: false,
 })
+
+function setBreadcrumbs(crumbs: BreadcrumbItem[]) {
+  breadcrumbs.value = crumbs
+}
 
 // Functions fetchUserProfile
 async function fetchUserProfile() {
@@ -58,6 +69,8 @@ function logoutUser() {
 export function useUserStore() {
   return {
     user,
+    breadcrumbs,
+    setBreadcrumbs,
     checkUserStatus,
     logoutUser,
     setUserFromToken,
