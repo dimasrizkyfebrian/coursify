@@ -5,6 +5,7 @@ import RegisterView from '../views/RegisterView.vue'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import PendingApprovalView from '../views/admin/PendingApprovalView.vue'
+import PendingApprovalListView from '../views/admin/PendingApprovalListView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,9 +21,15 @@ const router = createRouter({
     },
     {
       path: '/admin/pending-approval',
-      name: 'admin-pending-approval',
       component: PendingApprovalView,
       meta: { requiresAuth: true, breadcrumb: 'Pending Approval' },
+      children: [
+        {
+          path: '',
+          name: 'admin-pending-list',
+          component: PendingApprovalListView,
+        },
+      ],
     },
   ],
 })
