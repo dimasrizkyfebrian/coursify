@@ -8,7 +8,7 @@ import StudentDashboard from '@/components/dashboards/StudentDashboard.vue'
 const { user } = useUserStore()
 </script>
 
-<template>
+<template id="dashboard">
   <AdminDashboard v-if="user.role === 'admin'" />
   <InstructorDashboard v-else-if="user.role === 'instructor'" />
   <StudentDashboard v-else-if="user.role === 'student'" />

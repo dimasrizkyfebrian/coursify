@@ -1,34 +1,47 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { RouterLink } from 'vue-router'
+import type { SidebarProps } from '@/components/ui/sidebar'
+import NavMain from '@/components/layout/NavMain.vue'
+import NavUser from '@/components/layout/NavUser.vue'
 
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
+  SidebarFooter,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarRail,
 } from '@/components/ui/sidebar'
 
-import { Users, Settings, BookCopy, LayoutDashboard } from 'lucide-vue-next'
+import { CpuIcon, Users, Settings2, BookCopy, LayoutDashboard } from 'lucide-vue-next'
 
 const { user } = useUserStore()
+const props = withDefaults(defineProps<SidebarProps>(), {
+  collapsible: 'icon',
+  variant: 'floating',
+})
 
 const adminLinks = [
-  { title: 'User Management', to: '/admin/users', icon: Users },
-  { title: 'Settings', to: '/admin/settings', icon: Settings },
+  {
+    title: 'User Management',
+    icon: Users,
+    isActive: true,
+    children: [
+      { title: 'Pending Approval', to: '/admin/users' },
+      { title: 'All Users', to: '/admin/all-users' },
+    ],
+  },
+  { title: 'Settings', to: '/admin/settings', icon: Settings2 },
 ]
 
 const instructorLinks = [{ title: 'My Courses', to: '/instructor/courses', icon: BookCopy }]
 
 const studentLinks = [{ title: 'Enrolled Courses', to: '/student/courses', icon: LayoutDashboard }]
 
-const navLinks = computed(() => {
+const navItems = computed(() => {
   switch (user.value.role) {
     case 'admin':
       return adminLinks
@@ -40,30 +53,45 @@ const navLinks = computed(() => {
       return []
   }
 })
+
+const data = {
+  user: {
+    name: 'Admin Dimas',
+    email: 'dimas@example.com',
+    avatar:
+      'https://images.unsplash.com/photo-1511485977113-f34c92461ad9?ixlib=rb-1.2.1&w=128&h=128&dpr=2&q=80',
+  },
+}
 </script>
 
 <template>
-  <Sidebar>
+  <Sidebar v-bind="props">
     <SidebarHeader>
-      <h1 class="text-xl font-bold text-center">Coursify</h1>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg" as-child>
+            <a href="#">
+              <div
+                class="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"
+              >
+                <CpuIcon class="size-4" />
+              </div>
+              <div class="flex flex-col gap-0.5 leading-none">
+                <span class="font-semibold">Coursify</span>
+                <span class="">v1.0.0</span>
+              </div>
+            </a>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
     </SidebarHeader>
 
-    <SidebarContent>
-      <SidebarGroup>
-        <SidebarGroupLabel class="uppercase"> {{ user.role }} Menu </SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem v-for="link in navLinks" :key="link.title">
-              <SidebarMenuButton as-child>
-                <RouterLink :to="link.to">
-                  <component :is="link.icon" class="w-5 h-5 mr-2" />
-                  <span>{{ link.title }}</span>
-                </RouterLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+    <SidebarContent class="flex-1">
+      <NavMain :items="navItems" />
     </SidebarContent>
+
+    <SidebarFooter>
+      <NavUser :user="data.user" />
+    </SidebarFooter>
   </Sidebar>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue"
+import { AvatarRoot } from "reka-ui"
 import { cn } from "@/lib/utils"
 
 const props = defineProps<{
@@ -8,10 +9,10 @@ const props = defineProps<{
 </script>
 
 <template>
-  <span
-    data-slot="dropdown-menu-shortcut"
-    :class="cn('text-neutral-500 ml-auto text-xs tracking-widest dark:text-neutral-400', props.class)"
+  <AvatarRoot
+    data-slot="avatar"
+    :class="cn('relative flex size-8 shrink-0 overflow-hidden rounded-full', props.class)"
   >
     <slot />
-  </span>
+  </AvatarRoot>
 </template>

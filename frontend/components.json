@@ -6,7 +6,7 @@
     "config": "",
     "css": "src/assets/main.css",
     "baseColor": "neutral",
-    "cssVariables": true,
+    "cssVariables": false,
     "prefix": ""
   },
   "aliases": {
