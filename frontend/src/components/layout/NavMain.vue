@@ -2,6 +2,7 @@
 import { RouterLink } from 'vue-router'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import type { LucideIcon } from 'lucide-vue-next'
 import { ChevronRight } from 'lucide-vue-next'
 
 import {
@@ -15,8 +16,21 @@ import {
   SidebarMenuSubButton,
 } from '@/components/ui/sidebar'
 
+interface NavLink {
+  title: string
+  name: string
+}
+
+interface NavItem {
+  title: string
+  icon: LucideIcon
+  isActive?: boolean
+  name?: string
+  children?: NavLink[]
+}
+
 defineProps<{
-  items: any[]
+  items: NavItem[]
 }>()
 </script>
 
@@ -38,9 +52,9 @@ defineProps<{
             </CollapsibleTrigger>
             <CollapsibleContent>
               <SidebarMenuSub>
-                <SidebarMenuSubItem v-for="child in link.children" :key="child.title">
-                  <SidebarMenuSubButton as-child>
-                    <RouterLink :to="child.to">
+                <SidebarMenuSubItem v-for="child in link.children" :key="child.title" as-child>
+                  <SidebarMenuSubButton>
+                    <RouterLink :to="{ name: child.name }">
                       {{ child.title }}
                     </RouterLink>
                   </SidebarMenuSubButton>
@@ -51,7 +65,7 @@ defineProps<{
         </Collapsible>
 
         <SidebarMenuItem v-else as-child>
-          <RouterLink :to="link.to">
+          <RouterLink :to="{ name: link.name }">
             <SidebarMenuButton>
               <component :is="link.icon" class="w-5 h-5 mr-2" />
               <span>{{ link.title }}</span>

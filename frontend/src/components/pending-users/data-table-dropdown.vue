@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { inject } from 'vue'
+import { defineProps } from 'vue'
+import { RouterLink } from 'vue-router'
 import type { User } from './columns.ts'
 import api from '@/lib/axios'
 import {
@@ -60,7 +62,11 @@ async function rejectUser(userId: string) {
         <CircleX class="w-4 h-4 mr-2" /> Reject User
       </DropdownMenuItem>
       <DropdownMenuSeparator />
-      <DropdownMenuItem>View details</DropdownMenuItem>
+      <DropdownMenuItem as-child>
+        <RouterLink :to="{ name: 'admin-pending-detail', params: { id: user.id } }">
+          View details
+        </RouterLink>
+      </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 </template>

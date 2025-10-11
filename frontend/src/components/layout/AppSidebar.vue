@@ -30,11 +30,11 @@ const adminLinks = [
     icon: Users,
     isActive: true,
     children: [
-      { title: 'Pending Approval', to: '/admin/pending-approval' },
-      { title: 'All Users', to: '/admin/all-users' },
+      { title: 'Pending Approval', name: 'admin-pending-list' },
+      { title: 'All Users', name: 'admin-all-users' },
     ],
   },
-  { title: 'Settings', to: '/admin/settings', icon: Settings2 },
+  { title: 'Settings', name: 'admin-settings', icon: Settings2 },
 ]
 
 const instructorLinks = [{ title: 'My Courses', to: '/instructor/courses', icon: BookCopy }]
@@ -84,5 +84,6 @@ const navItems = computed(() => {
     <SidebarFooter>
       <NavUser />
     </SidebarFooter>
+    <SidebarRail />
   </Sidebar>
 </template>

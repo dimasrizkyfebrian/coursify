@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { RouterView, RouterLink } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 
@@ -47,7 +46,7 @@ const { breadcrumbs } = useUserStore()
           </div>
         </header>
         <div class="p-4 flex-1 overflow-y-auto">
-          <slot />
+          <RouterView />
         </div>
       </main>
     </SidebarInset>
