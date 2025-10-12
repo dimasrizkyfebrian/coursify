@@ -2,9 +2,9 @@
 import { ref, onMounted, provide } from 'vue'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
-import type { User } from '../../components/pending-users/columns.ts'
-import { columns } from '../../components/pending-users/columns.ts'
-import DataTable from '../../components/pending-users/data-table.vue'
+import type { User } from '../../components/admin/pending-users/columns.ts'
+import { columns } from '../../components/admin/pending-users/columns.ts'
+import DataTable from '../../components/data-table/data-table.vue'
 
 const users = ref<User[]>([])
 

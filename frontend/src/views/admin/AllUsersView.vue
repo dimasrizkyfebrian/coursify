@@ -3,9 +3,9 @@ import { ref, onMounted, provide } from 'vue'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 
-import DataTable from '@/components/pending-users/data-table.vue'
-import type { User } from '@/components/all-users/columns'
-import { columns } from '@/components/all-users/columns'
+import DataTable from '@/components/data-table/data-table.vue'
+import type { User } from '@/components/admin/all-users/columns'
+import { columns } from '@/components/admin/all-users/columns'
 
 const users = ref<User[]>([])
 const isLoading = ref(true)
