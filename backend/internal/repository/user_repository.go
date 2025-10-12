@@ -132,3 +132,25 @@ func (r *UserRepository) GetAllUsers() ([]model.User, error) {
 		}
 	return users, nil
 }
+
+// Method UpdateUser
+func (r *UserRepository) UpdateUser(user *model.User) error {
+	query := `UPDATE users SET full_name = $1, email = $2, role = $3, updated_at = NOW() WHERE id = $4`
+
+	result, err := r.DB.Exec(query, user.FullName, user.Email, user.Role, user.ID)
+	if err != nil {
+		log.Printf("Error updating user: %v", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}

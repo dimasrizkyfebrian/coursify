@@ -50,9 +50,10 @@ func main() {
 
 	r.Get("/api/admin/users", userHandler.GetPendingUsers)
 	r.Get("/api/admin/users/all", userHandler.GetAllUsers)
+	r.Get("/api/admin/users/{id}", userHandler.GetUserByIDForAdmin)
 	r.Put("/api/admin/users/{id}/approve", userHandler.ApproveUser)
 	r.Put("/api/admin/users/{id}/reject", userHandler.RejectUser)
-	r.Get("/api/admin/users/{id}", userHandler.GetUserByIDForAdmin)
+	r.Put("/api/admin/users/{id}", userHandler.UpdateUser)
 })
 	
 	// --- Protected General Routes ---
