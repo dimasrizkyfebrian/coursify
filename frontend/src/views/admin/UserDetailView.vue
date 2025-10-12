@@ -75,6 +75,20 @@ async function handleReject() {
   }
 }
 
+async function handleDelete() {
+  if (!user.value) return
+  isSubmitting.value = true
+  try {
+    await api.delete(`/admin/users/${user.value.id}`)
+    toast.success('User has been deleted.')
+    router.push({ name: 'admin-all-users' })
+  } catch (error) {
+    toast.error('Failed to delete user.')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
 const userInitials = computed(() => {
   return user.value?.full_name?.charAt(0).toUpperCase() || 'U'
 })
@@ -159,7 +173,9 @@ onMounted(() => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction>Continue</AlertDialogAction>
+              <AlertDialogAction @click="handleDelete" :disabled="isSubmitting"
+                >Continue</AlertDialogAction
+              >
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

@@ -27,6 +27,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,6 +45,7 @@ import { Ellipsis, Pencil, Trash2 } from 'lucide-vue-next'
 const props = defineProps<{ user: User }>()
 
 const isEditDialogOpen = ref(false)
+const isDeleteDialogOpen = ref(false)
 
 const formData = ref({
   full_name: '',
@@ -65,8 +76,16 @@ async function handleUpdate() {
   }
 }
 
-function deleteUser() {
-  toast.warning('Delete button clicked.')
+async function handleDeleteConfirm() {
+  try {
+    const response = await api.delete(`/admin/users/${props.user.id}`)
+    toast.success(response.data.message || 'User deleted successfully.')
+    if (refreshData) refreshData()
+  } catch (error) {
+    toast.error('Failed to delete user.')
+  } finally {
+    isDeleteDialogOpen.value = false
+  }
 }
 </script>
 
@@ -83,7 +102,10 @@ function deleteUser() {
         <DropdownMenuItem @click="isEditDialogOpen = true">
           <Pencil class="w-4 h-4 mr-2" /> Edit
         </DropdownMenuItem>
-        <DropdownMenuItem @click="deleteUser" class="text-red-600 focus:text-red-700">
+        <DropdownMenuItem
+          @click="isDeleteDialogOpen = true"
+          class="text-red-600 focus:text-red-700"
+        >
           <Trash2 class="w-4 h-4 mr-2" /> Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -127,5 +149,22 @@ function deleteUser() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog v-model:open="isDeleteDialogOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the account for
+            <strong>{{ user.full_name }}</strong
+            >.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction @click="handleDeleteConfirm">Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
