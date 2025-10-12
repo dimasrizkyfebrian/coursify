@@ -213,3 +213,20 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "User updated successfully"})
 }
+
+func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "id")
+
+	err := h.Repo.DeleteUser(userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "User deleted successfully"})
+}

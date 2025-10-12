@@ -16,7 +16,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{DB: db}
 }
 
-// Method CreateUser
+// CreateUser Method
 func (r *UserRepository) CreateUser(user *model.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -36,7 +36,7 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 	return nil
 }
 
-// Method GetUserByEmail
+// GetUserByEmail Method
 func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	var user model.User
 	query := `SELECT id, full_name, email, password_hash, role, status FROM users WHERE email = $1`
@@ -52,7 +52,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	return &user, nil
 }
 
-// Method GetUsersByStatus
+// GetUsersByStatus Method
 func (r *UserRepository) GetUsersByStatus(status string) ([]model.User, error) {
 	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users WHERE status = $1 ORDER BY created_at ASC`
 
@@ -74,7 +74,7 @@ func (r *UserRepository) GetUsersByStatus(status string) ([]model.User, error) {
 	return users, nil
 }
 
-// Method UpdateUserStatus
+// UpdateUserStatus Method
 func (r *UserRepository) UpdateUserStatus(userID, status string) error {
 	query := `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`
 
@@ -96,7 +96,7 @@ func (r *UserRepository) UpdateUserStatus(userID, status string) error {
 	return nil
 }
 
-// Method GetUsersByID
+// GetUserByID Method
 func (r *UserRepository) GetUserByID(userID string) (*model.User, error) {
 	var user model.User
 	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users WHERE id = $1`
@@ -112,7 +112,7 @@ func (r *UserRepository) GetUserByID(userID string) (*model.User, error) {
 	return &user, nil
 }
 
-// Method GetAllUsers
+// GetAllUsers Method
 func (r *UserRepository) GetAllUsers() ([]model.User, error) {
 	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users ORDER BY created_at ASC`
 
@@ -133,13 +133,35 @@ func (r *UserRepository) GetAllUsers() ([]model.User, error) {
 	return users, nil
 }
 
-// Method UpdateUser
+// UpdateUser Method
 func (r *UserRepository) UpdateUser(user *model.User) error {
 	query := `UPDATE users SET full_name = $1, email = $2, role = $3, updated_at = NOW() WHERE id = $4`
 
 	result, err := r.DB.Exec(query, user.FullName, user.Email, user.Role, user.ID)
 	if err != nil {
 		log.Printf("Error updating user: %v", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+// DeleteUser Method
+func (r *UserRepository) DeleteUser(userID string) error {
+	query := `DELETE FROM users WHERE id = $1`
+
+	result, err := r.DB.Exec(query, userID)
+	if err != nil {
+		log.Printf("Error deleting user: %v", err)
 		return err
 	}
 

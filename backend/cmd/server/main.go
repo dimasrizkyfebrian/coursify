@@ -54,6 +54,7 @@ func main() {
 	r.Put("/api/admin/users/{id}/approve", userHandler.ApproveUser)
 	r.Put("/api/admin/users/{id}/reject", userHandler.RejectUser)
 	r.Put("/api/admin/users/{id}", userHandler.UpdateUser)
+	r.Delete("/api/admin/users/{id}", userHandler.DeleteUser)
 })
 	
 	// --- Protected General Routes ---
