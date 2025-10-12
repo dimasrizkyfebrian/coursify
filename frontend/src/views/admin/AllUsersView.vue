@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, provide } from 'vue'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 
@@ -25,6 +25,8 @@ async function fetchAllUsers() {
 onMounted(() => {
   fetchAllUsers()
 })
+
+provide('refreshUsers', fetchAllUsers)
 </script>
 
 <template>
