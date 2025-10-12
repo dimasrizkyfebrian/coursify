@@ -15,6 +15,7 @@ require (
 	github.com/didip/tollbooth/v6 v6.1.2 // indirect
 	github.com/didip/tollbooth/v7 v7.0.2 // indirect
 	github.com/didip/tollbooth_chi v0.0.0-20250112173903-88de5e56a7cc // indirect
+	github.com/go-faker/faker/v4 v4.7.0 // indirect
 	github.com/go-pkgz/expirable-cache v1.0.0 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
