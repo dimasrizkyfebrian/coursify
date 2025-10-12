@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { LucideIcon } from 'lucide-vue-next'
@@ -10,6 +11,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
+  SidebarMenuBadge,
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubItem,
@@ -28,6 +30,8 @@ interface NavItem {
   name?: string
   children?: NavLink[]
 }
+
+const { pendingUserCount } = useUserStore()
 
 defineProps<{
   items: NavItem[]
@@ -54,8 +58,16 @@ defineProps<{
               <SidebarMenuSub>
                 <SidebarMenuSubItem v-for="child in link.children" :key="child.title" as-child>
                   <SidebarMenuSubButton>
-                    <RouterLink :to="{ name: child.name }">
-                      {{ child.title }}
+                    <RouterLink
+                      :to="{ name: child.name }"
+                      class="flex justify-betsween items-center"
+                    >
+                      <span>{{ child.title }}</span>
+                      <SidebarMenuBadge
+                        v-if="child.name === 'admin-pending-list' && pendingUserCount > 0"
+                      >
+                        {{ pendingUserCount }}
+                      </SidebarMenuBadge>
                     </RouterLink>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>

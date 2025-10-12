@@ -3,6 +3,7 @@ import { inject } from 'vue'
 import { defineProps } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { User } from './columns.ts'
+import { useUserStore } from '@/stores/user'
 import api from '@/lib/axios'
 import {
   DropdownMenu,
@@ -20,13 +21,14 @@ defineProps<{
   user: User
 }>()
 
+const { fetchPendingUserCount } = useUserStore()
 const refreshUsers = inject<() => void>('refreshUsers')
 
 async function approveUser(userId: string) {
   try {
     const response = await api.put(`/admin/users/${userId}/approve`)
     toast.success(response.data.message || 'User approved successfully.')
-
+    fetchPendingUserCount()
     if (refreshUsers) refreshUsers()
   } catch (error) {
     toast.error('Failed to approve user.')
@@ -37,7 +39,7 @@ async function rejectUser(userId: string) {
   try {
     const response = await api.put(`/admin/users/${userId}/reject`)
     toast.success(response.data.message || 'User rejected successfully.')
-
+    fetchPendingUserCount()
     if (refreshUsers) refreshUsers()
   } catch (error) {
     toast.error('Failed to reject user.')

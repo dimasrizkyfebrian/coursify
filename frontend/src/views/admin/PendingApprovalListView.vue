@@ -10,7 +10,7 @@ const users = ref<User[]>([])
 
 async function fetchPendingUsers() {
   try {
-    const response = await api.get('/admin/users')
+    const response = await api.get('/admin/users/pending')
     users.value = response.data || []
   } catch (error) {
     toast.error('Failed to fetch users.')

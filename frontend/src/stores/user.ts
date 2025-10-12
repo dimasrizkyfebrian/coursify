@@ -7,6 +7,7 @@ interface BreadcrumbItem {
   to: string
 }
 
+const pendingUserCount = ref(0)
 const breadcrumbs = ref<BreadcrumbItem[]>([])
 
 // Reactive state
@@ -17,6 +18,16 @@ const user = ref({
   role: null as string | null,
   isLoggedIn: false,
 })
+
+async function fetchPendingUserCount() {
+  if (user.value.role !== 'admin') return
+  try {
+    const response = await api.get('/admin/users/pending/count')
+    pendingUserCount.value = response.data.count
+  } catch (error) {
+    console.error('Failed to fetch pending user count', error)
+  }
+}
 
 function setBreadcrumbs(crumbs: BreadcrumbItem[]) {
   breadcrumbs.value = crumbs
@@ -29,6 +40,7 @@ async function fetchUserProfile() {
     const response = await api.get('/profile')
     user.value.fullName = response.data.full_name
     user.value.email = response.data.email
+    fetchPendingUserCount()
   } catch (error) {
     console.error('Error fetching user profile:', error)
     logoutUser()
@@ -69,11 +81,13 @@ function logoutUser() {
 export function useUserStore() {
   return {
     user,
+    pendingUserCount,
+    fetchPendingUserCount,
+    fetchUserProfile,
+    checkUserStatus,
+    setUserFromToken,
+    logoutUser,
     breadcrumbs,
     setBreadcrumbs,
-    checkUserStatus,
-    logoutUser,
-    setUserFromToken,
-    fetchUserProfile,
   }
 }
