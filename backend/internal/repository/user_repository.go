@@ -190,3 +190,29 @@ func (r *UserRepository) DeleteUser(userID string) error {
 
 	return nil
 }
+
+// GetUserStats method
+func (r *UserRepository) GetUserStats() (map[string]int, error) {
+	stats := make(map[string]int)
+
+	query := `
+		SELECT
+			COUNT(*) AS total_users,
+			COUNT(*) FILTER (WHERE status = 'active') AS active_users,
+			COUNT(*) FILTER (WHERE status = 'pending') AS pending_users
+		FROM users
+	`
+
+	var total, active, pending int
+	err := r.DB.QueryRow(query).Scan(&total, &active, &pending)
+	if err != nil {
+		log.Printf("Error getting user stats: %v", err)
+		return nil, err
+	}
+
+	stats["total_users"] = total
+	stats["active_users"] = active
+	stats["pending_users"] = pending
+
+	return stats, nil
+}

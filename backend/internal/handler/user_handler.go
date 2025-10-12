@@ -242,3 +242,15 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "User deleted successfully"})
 }
+
+func (h *UserHandler) GetUserStats(w http.ResponseWriter, r *http.Request) {
+    stats, err := h.Repo.GetUserStats()
+    if err != nil {
+        http.Error(w, "Could not fetch user statistics", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(stats)
+}
