@@ -111,3 +111,24 @@ func (r *UserRepository) GetUserByID(userID string) (*model.User, error) {
 
 	return &user, nil
 }
+
+// Method GetAllUsers
+func (r *UserRepository) GetAllUsers() ([]model.User, error) {
+	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users ORDER BY created_at ASC`
+
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []model.User
+	for rows.Next() {
+		var user model.User
+		if err := rows.Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+		}
+	return users, nil
+}

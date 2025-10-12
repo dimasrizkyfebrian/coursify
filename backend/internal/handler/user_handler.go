@@ -176,3 +176,15 @@ func (h *UserHandler) GetUserByIDForAdmin(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(user)
 }
+
+func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.Repo.GetAllUsers()
+	if err != nil {
+		http.Error(w, "Could not fetch users", http.StatusInternalServerError)
+	return
+	}
+
+	w.Header().Set("Content_Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(users)
+}
