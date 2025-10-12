@@ -48,7 +48,8 @@ func main() {
 	r.Use(middleware.AuthMiddleware)
 	r.Use(middleware.AdminOnly)
 
-	r.Get("/api/admin/users", userHandler.GetPendingUsers)
+	r.Get("/api/admin/users/pending", userHandler.GetPendingUsers)
+	r.Get("/api/admin/users/pending/count", userHandler.GetPendingUserCount)
 	r.Get("/api/admin/users/all", userHandler.GetAllUsers)
 	r.Get("/api/admin/users/{id}", userHandler.GetUserByIDForAdmin)
 	r.Put("/api/admin/users/{id}/approve", userHandler.ApproveUser)

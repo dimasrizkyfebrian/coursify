@@ -112,6 +112,20 @@ func (r *UserRepository) GetUserByID(userID string) (*model.User, error) {
 	return &user, nil
 }
 
+// GetPendingUserCount Method
+func (r *UserRepository) GetPendingUserCount() (int, error) {
+    var count int
+    query := `SELECT COUNT(*) FROM users WHERE status = 'pending'`
+
+    err := r.DB.QueryRow(query).Scan(&count)
+    if err != nil {
+        log.Printf("Error counting pending users: %v", err)
+        return 0, err
+    }
+
+    return count, nil
+}
+
 // GetAllUsers Method
 func (r *UserRepository) GetAllUsers() ([]model.User, error) {
 	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users ORDER BY created_at ASC`

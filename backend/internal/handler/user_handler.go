@@ -177,6 +177,18 @@ func (h *UserHandler) GetUserByIDForAdmin(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(user)
 }
 
+func (h *UserHandler) GetPendingUserCount(w http.ResponseWriter, r *http.Request) {
+    count, err := h.Repo.GetPendingUserCount()
+    if err != nil {
+        http.Error(w, "Could not get pending user count", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]int{"count": count})
+}
+
 func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.Repo.GetAllUsers()
 	if err != nil {
