@@ -68,6 +68,8 @@ const table = useVueTable({
     },
   },
 })
+
+defineExpose({ table })
 </script>
 
 <template>
