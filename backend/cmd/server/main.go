@@ -38,6 +38,9 @@ func main() {
 
 	userRepo := repository.NewUserRepository(db)
 	userHandler := handler.NewUserHandler(userRepo)
+	courseRepo := repository.NewCourseRepository(db)
+	courseHandler := handler.NewCourseHandler(courseRepo)
+
 
 	// --- Public Routes ---
 	r.With(middleware.RateLimitMiddleware).Post("/api/register", userHandler.Register)
@@ -57,6 +60,14 @@ func main() {
 	r.Put("/api/admin/users/{id}/reject", userHandler.RejectUser)
 	r.Put("/api/admin/users/{id}", userHandler.UpdateUser)
 	r.Delete("/api/admin/users/{id}", userHandler.DeleteUser)
+	})
+
+	// --- Protected Instructor Routes ---
+	r.Group(func(r chi.Router) {
+    r.Use(middleware.AuthMiddleware)
+    r.Use(middleware.InstructorOnly)
+
+    r.Post("/api/instructor/courses", courseHandler.CreateCourse)
 })
 	
 	// --- Protected General Routes ---

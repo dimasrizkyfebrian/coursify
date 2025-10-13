@@ -66,3 +66,16 @@ func AdminOnly(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func InstructorOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        role, ok := r.Context().Value(UserRoleKey).(string)
+
+        if !ok || role != "instructor" {
+            http.Error(w, "Forbidden: Instructors only", http.StatusForbidden)
+            return
+        }
+
+        next.ServeHTTP(w, r)
+    })
+}
