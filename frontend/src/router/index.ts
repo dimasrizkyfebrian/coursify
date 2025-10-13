@@ -5,11 +5,14 @@ import RegisterView from '../views/RegisterView.vue'
 import LoginView from '../views/LoginView.vue'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import DashboardView from '@/views/DashboardView.vue'
+// --- Admin ---
 import PendingApprovalView from '../views/admin/PendingApprovalView.vue'
 import PendingApprovalListView from '../views/admin/PendingApprovalListView.vue'
 import UserDetailView from '../views/admin/UserDetailView.vue'
 import AllUsersView from '@/views/admin/AllUsersView.vue'
 import SettingsView from '@/views/admin/SettingsView.vue'
+// --- Instructor ---
+import MyCoursesView from '../views/instructor/MyCoursesView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,6 +29,7 @@ const router = createRouter({
       meta: { requiresAuth: true, breadcrumb: 'Dashboard' },
       redirect: { name: 'dashboard-home' },
       children: [
+        // --- Admin Routes ---
         {
           path: '',
           name: 'dashboard-home',
@@ -56,6 +60,13 @@ const router = createRouter({
           name: 'admin-settings',
           component: SettingsView,
           meta: { breadcrumb: 'Settings' },
+        },
+        // --- Instructor Routes ---
+        {
+          path: 'instructor/courses',
+          name: 'instructor-my-courses',
+          component: MyCoursesView,
+          meta: { breadcrumb: 'My Courses' },
         },
       ],
     },

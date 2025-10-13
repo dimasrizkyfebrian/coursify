@@ -37,7 +37,7 @@ const adminLinks = [
   { title: 'Settings', name: 'admin-settings', icon: Settings2 },
 ]
 
-const instructorLinks = [{ title: 'My Courses', to: '/instructor/courses', icon: BookCopy }]
+const instructorLinks = [{ title: 'My Courses', name: 'instructor-my-courses', icon: BookCopy }]
 
 const studentLinks = [{ title: 'Enrolled Courses', to: '/student/courses', icon: LayoutDashboard }]
 
