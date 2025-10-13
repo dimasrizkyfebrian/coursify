@@ -3,17 +3,23 @@ import { ref, onMounted } from 'vue'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 
+// Import components
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PlusCircle } from 'lucide-vue-next'
-
+import { PlusCircle, Pencil } from 'lucide-vue-next'
 import CreateCourseDialog from '@/components/instructor/my-courses/CreateCourseDialog.vue'
+import EditCourseDialog from '@/components/instructor/my-courses/EditCourseDialog.vue'
 
+// State variables
 const courses = ref<any[]>([])
 const isLoading = ref(true)
+// Modal states
 const isCreateModalOpen = ref(false)
+const isEditModalOpen = ref(false)
+const selectedCourse = ref<any | null>(null)
 
+// Fetch my courses from the API
 async function fetchMyCourses() {
   try {
     isLoading.value = true
@@ -32,6 +38,11 @@ onMounted(() => {
 
 function openCreateCourseModal() {
   isCreateModalOpen.value = true
+}
+
+function openEditCourseModal(course: any) {
+  selectedCourse.value = course
+  isEditModalOpen.value = true
 }
 </script>
 
@@ -62,13 +73,19 @@ function openCreateCourseModal() {
       </div>
 
       <div v-else class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card v-for="course in courses" :key="course.id">
+        <Card v-for="course in courses" :key="course.id" class="flex flex-col">
           <CardHeader>
             <CardTitle>{{ course.title }}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent class="flex-1">
             <CardDescription>{{ course.description }}</CardDescription>
           </CardContent>
+          <CardFooter class="flex justify-center">
+            <Button @click="openEditCourseModal(course)" variant="outline" size="sm">
+              <Pencil class="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     </div>
@@ -77,6 +94,12 @@ function openCreateCourseModal() {
       :is-open="isCreateModalOpen"
       :refresh-data="fetchMyCourses"
       @update:is-open="isCreateModalOpen = $event"
+    />
+    <EditCourseDialog
+      :is-open="isEditModalOpen"
+      :course="selectedCourse"
+      :refresh-data="fetchMyCourses"
+      @update:is-open="isEditModalOpen = $event"
     />
   </div>
 </template>
