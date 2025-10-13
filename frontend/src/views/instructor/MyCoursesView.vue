@@ -3,14 +3,16 @@ import { ref, onMounted } from 'vue'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 
-// Import komponen UI
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PlusCircle } from 'lucide-vue-next'
 
+import CreateCourseDialog from '@/components/instructor/my-courses/CreateCourseDialog.vue'
+
 const courses = ref<any[]>([])
 const isLoading = ref(true)
+const isCreateModalOpen = ref(false)
 
 async function fetchMyCourses() {
   try {
@@ -29,7 +31,7 @@ onMounted(() => {
 })
 
 function openCreateCourseModal() {
-  toast.info('Create New Course button clicked.')
+  isCreateModalOpen.value = true
 }
 </script>
 
@@ -70,5 +72,11 @@ function openCreateCourseModal() {
         </Card>
       </div>
     </div>
+
+    <CreateCourseDialog
+      :is-open="isCreateModalOpen"
+      :refresh-data="fetchMyCourses"
+      @update:is-open="isCreateModalOpen = $event"
+    />
   </div>
 </template>
