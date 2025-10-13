@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,10 @@ const formData = ref({
 })
 const isSubmitting = ref(false)
 
+const isFormInvalid = computed(() => {
+  return !formData.value.title.trim() || !formData.value.description.trim()
+})
+
 watch(
   () => props.isOpen,
   (newValue) => {
@@ -39,6 +43,14 @@ watch(
 )
 
 async function handleCreateCourse() {
+  // Check if the form is invalid
+  if (isFormInvalid.value) {
+    toast.error('Validation Error', {
+      description: 'Title and description cannot be empty.',
+    })
+    return // Exit the function if the form is invalid
+  }
+
   isSubmitting.value = true
   try {
     const response = await api.post('/instructor/courses', formData.value)
