@@ -67,8 +67,9 @@ func main() {
     r.Use(middleware.AuthMiddleware)
     r.Use(middleware.InstructorOnly)
 
+	r.Get("/api/instructor/courses", courseHandler.GetMyCourses)
     r.Post("/api/instructor/courses", courseHandler.CreateCourse)
-})
+	})
 	
 	// --- Protected General Routes ---
 	r.Group(func(r chi.Router) {
