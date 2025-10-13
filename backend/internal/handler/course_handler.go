@@ -8,6 +8,7 @@ import (
 	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
 	"github.com/dimasrizkyfebrian/coursify/internal/model"
 	"github.com/dimasrizkyfebrian/coursify/internal/repository"
+	"github.com/go-chi/chi/v5"
 )
 
 type CourseHandler struct {
@@ -75,4 +76,48 @@ func (h *CourseHandler) GetMyCourses(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(courses)
+}
+
+// UpdateCourse handles request to edit courses
+func (h *CourseHandler) UpdateCourse(w http.ResponseWriter, r *http.Request) {
+    // Get instructor id from context JWT
+    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+    if !ok {
+        http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
+        return
+    }
+
+    // Get course id from url parameter
+    courseID := chi.URLParam(r, "id")
+
+    // Check if the course exists and belongs to the instructor
+    existingCourse, err := h.Repo.GetCourseByID(courseID)
+    if err != nil || existingCourse == nil {
+        http.Error(w, "Course not found", http.StatusNotFound)
+        return
+    }
+    if existingCourse.InstructorID != instructorID {
+        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+        return
+    }
+
+    // Parse the request body into a Course struct
+    var courseUpdates model.Course
+    if err := json.NewDecoder(r.Body).Decode(&courseUpdates); err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Validate the course fields
+    courseUpdates.ID = courseID
+
+    // Update the course in the database
+    if err := h.Repo.UpdateCourse(&courseUpdates); err != nil {
+        http.Error(w, "Failed to update course", http.StatusInternalServerError)
+        return
+    }
+
+    // Respond with success message
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Course updated successfully"})
 }

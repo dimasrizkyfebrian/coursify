@@ -59,3 +59,34 @@ func (r *CourseRepository) GetCoursesByInstructorID(instructorID string) ([]mode
 
     return courses, nil
 }
+
+// GetCourseByID method
+func (r *CourseRepository) GetCourseByID(courseID string) (*model.Course, error) {
+    var course model.Course
+    query := `SELECT id, instructor_id, title, description, cover_image_url, created_at, updated_at
+               FROM courses WHERE id = $1`
+
+    err := r.DB.QueryRow(query, courseID).Scan(
+        &course.ID, &course.InstructorID, &course.Title, &course.Description,
+        &course.CoverImageURL, &course.CreatedAt, &course.UpdatedAt,
+    )
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, nil
+        }
+        return nil, err
+    }
+    return &course, nil
+}
+
+// UpdateCourse method
+func (r *CourseRepository) UpdateCourse(course *model.Course) error {
+    query := `UPDATE courses SET title = $1, description = $2, updated_at = NOW() WHERE id = $3`
+
+    _, err := r.DB.Exec(query, course.Title, course.Description, course.ID)
+    if err != nil {
+        log.Printf("Error updating course: %v", err)
+        return err
+    }
+    return nil
+}
