@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
 	"github.com/dimasrizkyfebrian/coursify/internal/model"
@@ -30,6 +31,12 @@ func (h *CourseHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
     var course model.Course
     if err := json.NewDecoder(r.Body).Decode(&course); err != nil {
         http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Validate the course fields
+    if strings.TrimSpace(course.Title) == "" || strings.TrimSpace(course.Description) == "" {
+        http.Error(w, "Title and description cannot be empty", http.StatusBadRequest)
         return
     }
 
