@@ -13,6 +13,7 @@ import AllUsersView from '@/views/admin/AllUsersView.vue'
 import SettingsView from '@/views/admin/SettingsView.vue'
 // --- Instructor ---
 import MyCoursesView from '../views/instructor/MyCoursesView.vue'
+import CourseDetailView from '../views/instructor/CourseDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -67,6 +68,14 @@ const router = createRouter({
           name: 'instructor-my-courses',
           component: MyCoursesView,
           meta: { breadcrumb: 'My Courses' },
+          children: [
+            {
+              path: ':id',
+              name: 'instructor-course-detail',
+              component: CourseDetailView,
+              meta: { breadcrumb: 'Course Detail' },
+            },
+          ],
         },
       ],
     },
