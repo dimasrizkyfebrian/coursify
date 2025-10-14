@@ -6,7 +6,14 @@ import { toast } from 'vue-sonner'
 
 // Import components
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PlusCircle, Pencil } from 'lucide-vue-next'
 import CreateCourseDialog from '@/components/instructor/my-courses/CreateCourseDialog.vue'
@@ -50,18 +57,17 @@ function openEditCourseModal(course: any) {
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-2xl font-bold mb-4">My Courses</h1>
-        <p class="text-gray-500">Manage all courses you have created.</p>
-      </div>
-      <Button @click="openCreateCourseModal">
-        <PlusCircle class="w-4 h-4 mr-2" />
-        Create New Course
-      </Button>
-    </div>
-
     <template v-if="!route.params.id">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-bold mb-4">My Courses</h1>
+          <p class="text-gray-500">Manage all courses you have created.</p>
+        </div>
+        <Button @click="openCreateCourseModal">
+          <PlusCircle class="w-4 h-4 mr-2" />
+          Create New Course
+        </Button>
+      </div>
       <div v-if="isLoading" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Skeleton v-for="i in 3" :key="i" class="h-48 rounded-lg" />
       </div>

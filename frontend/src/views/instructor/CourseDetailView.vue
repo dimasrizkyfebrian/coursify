@@ -3,10 +3,22 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { PlusCircle, Pencil } from 'lucide-vue-next'
+import { PlusCircle, Pencil, Trash2 } from 'lucide-vue-next'
+
 import AddMaterialDialog from '@/components/instructor/my-courses/AddMaterialDialog.vue'
 import EditMaterialDialog from '@/components/instructor/my-courses/EditMaterialDialog.vue'
 
@@ -15,9 +27,28 @@ const route = useRoute()
 const course = ref<any>(null)
 const materials = ref<any[]>([])
 const isLoading = ref(true)
+
 const isAddModalOpen = ref(false)
 const isEditModalOpen = ref(false)
 const selectedMaterial = ref<any | null>(null)
+const isDeleteDialogOpen = ref(false)
+
+onMounted(async () => {
+  const courseId = route.params.id
+  try {
+    const [courseResponse, materialsResponse] = await Promise.all([
+      api.get(`/instructor/courses/${courseId}`),
+      api.get(`/instructor/courses/${courseId}/materials`),
+    ])
+
+    course.value = courseResponse.data
+    materials.value = materialsResponse.data || []
+  } catch (error) {
+    toast.error('Failed to load course data.')
+  } finally {
+    isLoading.value = false
+  }
+})
 
 // Fetch course data from the API
 async function fetchCourseData() {
@@ -29,11 +60,27 @@ async function fetchCourseData() {
       api.get(`/instructor/courses/${courseId}/materials`),
     ])
     course.value = courseResponse.data
-    materials.value = materialsResponse.data
+    materials.value = materialsResponse.data || []
   } catch (error) {
     toast.error('Failed to load course data.')
   } finally {
     isLoading.value = false
+  }
+}
+
+// Handle delete material confirmation
+async function handleDeleteConfirm() {
+  if (!selectedMaterial.value) return
+  try {
+    await api.delete(
+      `/instructor/courses/${course.value.id}/materials/${selectedMaterial.value.id}`,
+    )
+    toast.success('Material deleted successfully.')
+    fetchCourseData() // Refresh the course data
+  } catch (error) {
+    toast.error('Failed to delete material.')
+  } finally {
+    isDeleteDialogOpen.value = false // Close dialog
   }
 }
 
@@ -51,6 +98,12 @@ function openAddMaterialModal() {
 function openEditMaterialModal(material: any) {
   selectedMaterial.value = material
   isEditModalOpen.value = true
+}
+
+// Open the delete material dialog
+function openDeleteMaterialDialog(material: any) {
+  selectedMaterial.value = material
+  isDeleteDialogOpen.value = true
 }
 </script>
 
@@ -104,10 +157,16 @@ function openEditMaterialModal(material: any) {
                   material.content_type
                 }}</span>
               </div>
-              <Button @click="openEditMaterialModal(material)" variant="outline" size="sm">
-                <Pencil class="w-4 h-4 mr-2" />
-                Edit
-              </Button>
+
+              <div class="flex gap-2">
+                <Button @click="openEditMaterialModal(material)" variant="outline" size="sm">
+                  <Pencil class="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+                <Button @click="openDeleteMaterialDialog(material)" variant="destructive" size="sm">
+                  <Trash2 class="w-4 h-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -116,15 +175,32 @@ function openEditMaterialModal(material: any) {
 
     <AddMaterialDialog
       :is-open="isAddModalOpen"
-      :course-id="course?.id"
+      :course-id="course?.id || null"
       :refresh-data="fetchCourseData"
       @update:is-open="isAddModalOpen = $event"
     />
+
     <EditMaterialDialog
       :is-open="isEditModalOpen"
       :material="selectedMaterial"
       :refresh-data="fetchCourseData"
       @update:is-open="isEditModalOpen = $event"
     />
+
+    <AlertDialog v-model:open="isDeleteDialogOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the material titled
+            <strong>"{{ selectedMaterial?.title }}"</strong>.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction @click="handleDeleteConfirm">Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
