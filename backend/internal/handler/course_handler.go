@@ -152,3 +152,48 @@ func (h *CourseHandler) UpdateCourse(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Course updated successfully"})
 }
+
+// AddMaterialToCourse handles request to add material to a course
+func (h *CourseHandler) AddMaterialToCourse(w http.ResponseWriter, r *http.Request) {
+    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+    if !ok {
+        http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
+        return
+    }
+
+    courseID := chi.URLParam(r, "id")
+
+    // Verify course ownership before adding material
+    existingCourse, err := h.Repo.GetCourseByID(courseID)
+    if err != nil || existingCourse == nil {
+        http.Error(w, "Course not found", http.StatusNotFound)
+        return
+    }
+    if existingCourse.InstructorID != instructorID {
+        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+        return
+    }
+
+    var material model.LearningMaterial
+    if err := json.NewDecoder(r.Body).Decode(&material); err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Simple input validation
+    if strings.TrimSpace(material.Title) == "" || strings.TrimSpace(material.ContentType) == "" {
+        http.Error(w, "Title and content_type are required", http.StatusBadRequest)
+        return
+    }
+
+    material.CourseID = courseID // Set course id from URL
+
+    if err := h.Repo.AddMaterialToCourse(&material); err != nil {
+        http.Error(w, "Failed to add material", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(material)
+}

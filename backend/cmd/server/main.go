@@ -97,6 +97,7 @@ func main() {
     r.Post("/api/instructor/courses", courseHandler.CreateCourse)
 	r.Put("/api/instructor/courses/{id}", courseHandler.UpdateCourse)
 	r.Get("/api/instructor/courses/{id}", courseHandler.GetMyCourseDetails)
+	r.Post("/api/instructor/courses/{id}/materials", courseHandler.AddMaterialToCourse)
 	})
 	
 	// --- Protected General Routes ---

@@ -90,3 +90,38 @@ func (r *CourseRepository) UpdateCourse(course *model.Course) error {
     }
     return nil
 }
+
+// AddMaterialToCourse method
+func (r *CourseRepository) AddMaterialToCourse(material *model.LearningMaterial) error {
+    // Get the last position to determine the position of new material
+    var lastPosition int
+    posQuery := `SELECT COALESCE(MAX(position), 0) FROM learning_materials WHERE course_id = $1`
+    err := r.DB.QueryRow(posQuery, material.CourseID).Scan(&lastPosition)
+    if err != nil {
+        log.Printf("Error getting last material position: %v", err)
+        return err
+    }
+    material.Position = lastPosition + 1
+
+    // Insert new material
+    insertQuery := `
+        INSERT INTO learning_materials (course_id, title, content_type, text_content, position)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, created_at, updated_at
+    `
+    err = r.DB.QueryRow(
+        insertQuery,
+        material.CourseID,
+        material.Title,
+        material.ContentType,
+        material.TextContent,
+        material.Position,
+    ).Scan(&material.ID, &material.CreatedAt, &material.UpdatedAt)
+
+    if err != nil {
+        log.Printf("Error adding material to course: %v", err)
+        return err
+    }
+
+    return nil
+}
