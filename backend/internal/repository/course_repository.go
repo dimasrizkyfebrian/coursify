@@ -204,3 +204,26 @@ func (r *CourseRepository) UpdateMaterial(material *model.LearningMaterial) erro
 
 	return nil
 }
+
+// DeleteMaterial method
+func (r *CourseRepository) DeleteMaterial(courseID, materialID string) error {
+	query := `DELETE FROM learning_materials WHERE id = $1 AND course_id = $2`
+
+    // Execute the delete query
+	result, err := r.DB.Exec(query, materialID, courseID)
+	if err != nil {
+		return err
+	}
+
+    // Check if any rows were affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows // Indicates that the material was not found or does not match
+	}
+
+	return nil
+}

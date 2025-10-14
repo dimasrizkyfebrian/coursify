@@ -275,3 +275,36 @@ func (h *CourseHandler) UpdateMaterial(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Material updated successfully"})
 }
+
+// DeleteMaterial handles requests to delete course materials
+func (h *CourseHandler) DeleteMaterial(w http.ResponseWriter, r *http.Request) {
+    // Get instructor ID from context JWT
+	instructorID, _ := r.Context().Value(middleware.UserIDKey).(string)
+	courseID := chi.URLParam(r, "id")
+	materialID := chi.URLParam(r, "materialId")
+
+	// Verify course ownership
+	existingCourse, err := h.Repo.GetCourseByID(courseID)
+	if err != nil || existingCourse == nil {
+		http.Error(w, "Course not found", http.StatusNotFound)
+		return
+	}
+	if existingCourse.InstructorID != instructorID {
+		http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		return
+	}
+
+    // Call repository to delete
+	if err := h.Repo.DeleteMaterial(courseID, materialID); err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Material not found in this course", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to delete material", http.StatusInternalServerError)
+		return
+	}
+
+    // Respond with success message
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Material deleted successfully"})
+}
