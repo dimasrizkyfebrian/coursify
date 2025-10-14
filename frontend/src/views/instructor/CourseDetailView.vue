@@ -6,15 +6,20 @@ import { toast } from 'vue-sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { PlusCircle } from 'lucide-vue-next'
+import { PlusCircle, Pencil } from 'lucide-vue-next'
 import AddMaterialDialog from '@/components/instructor/my-courses/AddMaterialDialog.vue'
+import EditMaterialDialog from '@/components/instructor/my-courses/EditMaterialDialog.vue'
 
+// State variables
 const route = useRoute()
 const course = ref<any>(null)
 const materials = ref<any[]>([])
 const isLoading = ref(true)
 const isAddModalOpen = ref(false)
+const isEditModalOpen = ref(false)
+const selectedMaterial = ref<any | null>(null)
 
+// Fetch course data from the API
 async function fetchCourseData() {
   const courseId = route.params.id
   try {
@@ -32,12 +37,20 @@ async function fetchCourseData() {
   }
 }
 
+// Fetch course data when the component mounts
 onMounted(() => {
   fetchCourseData()
 })
 
+// Open the add material modal
 function openAddMaterialModal() {
   isAddModalOpen.value = true
+}
+
+// Open the edit material modal
+function openEditMaterialModal(material: any) {
+  selectedMaterial.value = material
+  isEditModalOpen.value = true
 }
 </script>
 
@@ -91,6 +104,10 @@ function openAddMaterialModal() {
                   material.content_type
                 }}</span>
               </div>
+              <Button @click="openEditMaterialModal(material)" variant="outline" size="sm">
+                <Pencil class="w-4 h-4 mr-2" />
+                Edit
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -102,6 +119,12 @@ function openAddMaterialModal() {
       :course-id="course?.id"
       :refresh-data="fetchCourseData"
       @update:is-open="isAddModalOpen = $event"
+    />
+    <EditMaterialDialog
+      :is-open="isEditModalOpen"
+      :material="selectedMaterial"
+      :refresh-data="fetchCourseData"
+      @update:is-open="isEditModalOpen = $event"
     />
   </div>
 </template>
