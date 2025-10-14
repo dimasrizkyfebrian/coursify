@@ -78,9 +78,40 @@ func (h *CourseHandler) GetMyCourses(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(courses)
 }
 
+// GetMyCourseDetails handles requests to retrieve details of a specific course
+func (h *CourseHandler) GetMyCourseDetails(w http.ResponseWriter, r *http.Request) {
+    // Get the instructor ID from the JWT context
+    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+    if !ok {
+        http.Error(w, "Could not retrieve instructor ID from context", http.StatusInternalServerError)
+        return
+    }
+
+    // Get the course ID from the URL parameter
+    courseID := chi.URLParam(r, "id")
+
+    // Get course from repo
+    course, err := h.Repo.GetCourseByID(courseID)
+    if err != nil || course == nil {
+        http.Error(w, "Course not found", http.StatusNotFound)
+        return
+    }
+
+    // Check if the course belongs to the instructor
+    if course.InstructorID != instructorID {
+        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+        return
+    }
+
+    // Respond with the course details
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(course)
+}
+
 // UpdateCourse handles request to edit courses
 func (h *CourseHandler) UpdateCourse(w http.ResponseWriter, r *http.Request) {
-    // Get instructor id from context JWT
+    // Get instructor ID from context JWT
     instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
     if !ok {
         http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
