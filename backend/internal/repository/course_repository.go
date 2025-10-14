@@ -125,3 +125,54 @@ func (r *CourseRepository) AddMaterialToCourse(material *model.LearningMaterial)
 
     return nil
 }
+
+// GetMaterialsByCourseID method
+func (r *CourseRepository) GetMaterialsByCourseID(courseID string) ([]model.LearningMaterial, error) {
+    query := `
+        SELECT id, course_id, title, content_type, text_content, video_url, file_url, position, created_at, updated_at
+        FROM learning_materials 
+        WHERE course_id = $1 
+        ORDER BY position ASC
+    `
+    rows, err := r.DB.Query(query, courseID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var materials []model.LearningMaterial
+    for rows.Next() {
+        var material model.LearningMaterial
+        // Use sql.NullString for fields that can be NULL
+        var textContent, videoURL, fileURL sql.NullString
+
+        if err := rows.Scan(
+            &material.ID,
+            &material.CourseID,
+            &material.Title,
+            &material.ContentType,
+            &textContent,
+            &videoURL,
+            &fileURL,
+            &material.Position,
+            &material.CreatedAt,
+            &material.UpdatedAt,
+        ); err != nil {
+            return nil, err
+        }
+
+        // Conversion from sql.NullString to a regular string
+        if textContent.Valid {
+            material.TextContent = textContent.String
+        }
+        if videoURL.Valid {
+            material.VideoURL = videoURL.String
+        }
+        if fileURL.Valid {
+            material.FileURL = fileURL.String
+        }
+
+        materials = append(materials, material)
+    }
+    return materials, nil
+}

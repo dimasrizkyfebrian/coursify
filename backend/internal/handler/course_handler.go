@@ -197,3 +197,37 @@ func (h *CourseHandler) AddMaterialToCourse(w http.ResponseWriter, r *http.Reque
     w.WriteHeader(http.StatusCreated)
     json.NewEncoder(w).Encode(material)
 }
+
+// GetMaterialsByCourseID handles request to retrieve materials of a course
+func (h *CourseHandler) GetMaterialsByCourseID(w http.ResponseWriter, r *http.Request) {
+    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+    if !ok {
+        http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
+        return
+    }
+
+    courseId := chi.URLParam(r, "id")
+
+    // Verify course ownership before retrieving materials
+    existingCourse, err := h.Repo.GetCourseByID(courseId)
+    if err != nil || existingCourse == nil {
+        http.Error(w, "Course not found", http.StatusNotFound)
+        return
+    }
+    if existingCourse.InstructorID != instructorID {
+        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+        return
+    }
+
+    // Take material from repository
+    materials, err := h.Repo.GetMaterialsByCourseID(courseId)
+    if err != nil {
+        http.Error(w, "Failed to fetch materials", http.StatusInternalServerError)
+        return
+    }
+
+    // Respond with the list of materials
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(materials)
+}
