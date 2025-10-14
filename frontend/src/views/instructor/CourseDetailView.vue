@@ -7,33 +7,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { PlusCircle } from 'lucide-vue-next'
+import AddMaterialDialog from '@/components/instructor/my-courses/AddMaterialDialog.vue'
 
 const route = useRoute()
 const course = ref<any>(null)
 const materials = ref<any[]>([])
 const isLoading = ref(true)
+const isAddModalOpen = ref(false)
 
-onMounted(async () => {
+async function fetchCourseData() {
   const courseId = route.params.id
   try {
-    // Fetch course details and materials
+    isLoading.value = true
     const [courseResponse, materialsResponse] = await Promise.all([
       api.get(`/instructor/courses/${courseId}`),
       api.get(`/instructor/courses/${courseId}/materials`),
     ])
-
     course.value = courseResponse.data
     materials.value = materialsResponse.data
   } catch (error) {
     toast.error('Failed to load course data.')
-    console.error('Failed to fetch course data:', error)
   } finally {
     isLoading.value = false
   }
+}
+
+onMounted(() => {
+  fetchCourseData()
 })
 
 function openAddMaterialModal() {
-  toast.info('Add Material button clicked.')
+  isAddModalOpen.value = true
 }
 </script>
 
@@ -92,5 +96,12 @@ function openAddMaterialModal() {
         </div>
       </div>
     </div>
+
+    <AddMaterialDialog
+      :is-open="isAddModalOpen"
+      :course-id="course?.id"
+      :refresh-data="fetchCourseData"
+      @update:is-open="isAddModalOpen = $event"
+    />
   </div>
 </template>
