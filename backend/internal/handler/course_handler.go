@@ -20,6 +20,30 @@ func NewCourseHandler(repo *repository.CourseRepository) *CourseHandler {
     return &CourseHandler{Repo: repo}
 }
 
+type createCourseRequest struct {
+	Title       string `json:"title" example:"Introduction to Go"`
+	Description string `json:"description" example:"A beginner's guide to Golang."`
+}
+
+type addMaterialRequest struct {
+	Title       string `json:"title" example:"Chapter 1: Introduction"`
+	ContentType string `json:"content_type" enums:"text,video,pdf"`
+	TextContent string `json:"text_content,omitempty" example:"This is the lesson content."`
+	VideoURL    string `json:"video_url,omitempty" example:"https://youtube.com/watch?v=..."`
+}
+
+// @Summary      Create a new course (Instructor only)
+// @Description  Creates a new course for the logged-in instructor.
+// @Tags         Instructor
+// @Accept       json
+// @Produce      json
+// @Param        course body createCourseRequest true "Course Information"
+// @Success      201  {object}  model.Course
+// @Failure      400  {object}  map[string]string
+// @Failure      403  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /instructor/courses [post]
+// @Security     BearerAuth
 // CreateCourse handles requests to create new courses
 func (h *CourseHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
     // Get the instructor ID from the JWT context
@@ -57,6 +81,15 @@ func (h *CourseHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(course)
 }
 
+// @Summary      Get my courses (Instructor only)
+// @Description  Retrieves a list of all courses created by the logged-in instructor.
+// @Tags         Instructor
+// @Produce      json
+// @Success      200  {array}   model.Course
+// @Failure      403  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /instructor/courses [get]
+// @Security     BearerAuth
 // GetMyCourses handles requests to retrieve courses owned by the logged-in instructor
 func (h *CourseHandler) GetMyCourses(w http.ResponseWriter, r *http.Request) {
     // Get the instructor ID from the JWT context
@@ -79,6 +112,17 @@ func (h *CourseHandler) GetMyCourses(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(courses)
 }
 
+// @Summary      Get my course details (Instructor only)
+// @Description  Retrieves the details of a specific course owned by the logged-in instructor.
+// @Tags         Instructor
+// @Produce      json
+// @Param        id   path      string  true  "Course ID"
+// @Success      200  {object}  model.Course
+// @Failure      403  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /instructor/courses/{id} [get]
+// @Security     BearerAuth
 // GetMyCourseDetails handles requests to retrieve details of a specific course
 func (h *CourseHandler) GetMyCourseDetails(w http.ResponseWriter, r *http.Request) {
     // Get the instructor ID from the JWT context
@@ -110,6 +154,20 @@ func (h *CourseHandler) GetMyCourseDetails(w http.ResponseWriter, r *http.Reques
     json.NewEncoder(w).Encode(course)
 }
 
+// @Summary      Update a course (Instructor only)
+// @Description  Updates the title and description of a course owned by the logged-in instructor.
+// @Tags         Instructor
+// @Accept       json
+// @Produce      json
+// @Param        id     path      string  true  "Course ID"
+// @Param        course body      createCourseRequest true "Updated Course Information"
+// @Success      200    {object}  map[string]string
+// @Failure      400    {object}  map[string]string
+// @Failure      403    {object}  map[string]string
+// @Failure      404    {object}  map[string]string
+// @Failure      500    {object}  map[string]string
+// @Router       /instructor/courses/{id} [put]
+// @Security     BearerAuth
 // UpdateCourse handles request to edit courses
 func (h *CourseHandler) UpdateCourse(w http.ResponseWriter, r *http.Request) {
     // Get instructor ID from context JWT
@@ -154,6 +212,20 @@ func (h *CourseHandler) UpdateCourse(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(map[string]string{"message": "Course updated successfully"})
 }
 
+// @Summary      Add material to a course (Instructor only)
+// @Description  Adds a new learning material to a specific course.
+// @Tags         Instructor - Materials
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string  true  "Course ID"
+// @Param        material body      addMaterialRequest true "Material Information"
+// @Success      201      {object}  model.LearningMaterial
+// @Failure      400      {object}  map[string]string
+// @Failure      403      {object}  map[string]string
+// @Failure      404      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
+// @Router       /instructor/courses/{id}/materials [post]
+// @Security     BearerAuth
 // AddMaterialToCourse handles request to add material to a course
 func (h *CourseHandler) AddMaterialToCourse(w http.ResponseWriter, r *http.Request) {
     instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
@@ -199,6 +271,17 @@ func (h *CourseHandler) AddMaterialToCourse(w http.ResponseWriter, r *http.Reque
     json.NewEncoder(w).Encode(material)
 }
 
+// @Summary      Get course materials (Instructor only)
+// @Description  Retrieves all learning materials for a specific course.
+// @Tags         Instructor - Materials
+// @Produce      json
+// @Param        id   path      string  true  "Course ID"
+// @Success      200  {array}   model.LearningMaterial
+// @Failure      403  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /instructor/courses/{id}/materials [get]
+// @Security     BearerAuth
 // GetMaterialsByCourseID handles request to retrieve materials of a course
 func (h *CourseHandler) GetMaterialsByCourseID(w http.ResponseWriter, r *http.Request) {
     instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
@@ -233,6 +316,21 @@ func (h *CourseHandler) GetMaterialsByCourseID(w http.ResponseWriter, r *http.Re
     json.NewEncoder(w).Encode(materials)
 }
 
+// @Summary      Update course material (Instructor only)
+// @Description  Updates a specific learning material within a course.
+// @Tags         Instructor - Materials
+// @Accept       json
+// @Produce      json
+// @Param        id         path      string  true  "Course ID"
+// @Param        materialId path      string  true  "Material ID"
+// @Param        material   body      addMaterialRequest true "Updated Material Information"
+// @Success      200        {object}  map[string]string
+// @Failure      400        {object}  map[string]string
+// @Failure      403        {object}  map[string]string
+// @Failure      404        {object}  map[string]string
+// @Failure      500        {object}  map[string]string
+// @Router       /instructor/courses/{id}/materials/{materialId} [put]
+// @Security     BearerAuth
 // UpdateMaterial handles requests to edit course materials
 func (h *CourseHandler) UpdateMaterial(w http.ResponseWriter, r *http.Request) {
 	instructorID, _ := r.Context().Value(middleware.UserIDKey).(string)
@@ -276,6 +374,18 @@ func (h *CourseHandler) UpdateMaterial(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Material updated successfully"})
 }
 
+// @Summary      Delete course material (Instructor only)
+// @Description  Deletes a specific learning material from a course.
+// @Tags         Instructor - Materials
+// @Produce      json
+// @Param        id         path      string  true  "Course ID"
+// @Param        materialId path      string  true  "Material ID"
+// @Success      200        {object}  map[string]string
+// @Failure      403        {object}  map[string]string
+// @Failure      404        {object}  map[string]string
+// @Failure      500        {object}  map[string]string
+// @Router       /instructor/courses/{id}/materials/{materialId} [delete]
+// @Security     BearerAuth
 // DeleteMaterial handles requests to delete course materials
 func (h *CourseHandler) DeleteMaterial(w http.ResponseWriter, r *http.Request) {
     // Get instructor ID from context JWT

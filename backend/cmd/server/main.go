@@ -32,6 +32,8 @@ import (
 // @host      localhost:8080
 // @BasePath  /api
 
+// @alias sql.NullString=string
+
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization

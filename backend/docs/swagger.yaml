@@ -1,28 +1,47 @@
 basePath: /api
 definitions:
-  handler.loginRequest:
+  github_com_dimasrizkyfebrian_coursify_internal_model.Course:
     properties:
-      email:
+      cover_image_url:
+        $ref: '#/definitions/sql.NullString'
+      created_at:
         type: string
-      password:
+      description:
+        type: string
+      id:
+        type: string
+      instructor_id:
+        type: string
+      title:
+        type: string
+      updated_at:
         type: string
     type: object
-  handler.updateUserRequest:
+  github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial:
     properties:
-      email:
-        example: john.doe@example.com
+      content_type:
+        description: '''text'', ''video'', ''pdf'''
         type: string
-      full_name:
-        example: John Doe
+      course_id:
         type: string
-      role:
-        enum:
-        - admin
-        - instructor
-        - student
+      created_at:
+        type: string
+      file_url:
+        type: string
+      id:
+        type: string
+      position:
+        type: integer
+      text_content:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      video_url:
         type: string
     type: object
-  model.User:
+  github_com_dimasrizkyfebrian_coursify_internal_model.User:
     properties:
       created_at:
         type: string
@@ -40,6 +59,63 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  internal_handler.addMaterialRequest:
+    properties:
+      content_type:
+        enum:
+        - text
+        - video
+        - pdf
+        type: string
+      text_content:
+        example: This is the lesson content.
+        type: string
+      title:
+        example: 'Chapter 1: Introduction'
+        type: string
+      video_url:
+        example: https://youtube.com/watch?v=...
+        type: string
+    type: object
+  internal_handler.createCourseRequest:
+    properties:
+      description:
+        example: A beginner's guide to Golang.
+        type: string
+      title:
+        example: Introduction to Go
+        type: string
+    type: object
+  internal_handler.loginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  internal_handler.updateUserRequest:
+    properties:
+      email:
+        example: john.doe@example.com
+        type: string
+      full_name:
+        example: John Doe
+        type: string
+      role:
+        enum:
+        - admin
+        - instructor
+        - student
+        type: string
+    type: object
+  sql.NullString:
+    properties:
+      string:
+        type: string
+      valid:
+        description: Valid is true if String is not NULL
+        type: boolean
     type: object
 host: localhost:8080
 info:
@@ -110,7 +186,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.User'
+            $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User'
         "403":
           description: Forbidden
           schema:
@@ -149,7 +225,7 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/handler.updateUserRequest'
+          $ref: '#/definitions/internal_handler.updateUserRequest'
       produces:
       - application/json
       responses:
@@ -280,7 +356,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/model.User'
+              $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User'
             type: array
         "403":
           description: Forbidden
@@ -309,7 +385,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/model.User'
+              $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User'
             type: array
         "403":
           description: Forbidden
@@ -380,6 +456,369 @@ paths:
       summary: Get user statistics (Admin only)
       tags:
       - Admin
+  /instructor/courses:
+    get:
+      description: Retrieves a list of all courses created by the logged-in instructor.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get my courses (Instructor only)
+      tags:
+      - Instructor
+    post:
+      consumes:
+      - application/json
+      description: Creates a new course for the logged-in instructor.
+      parameters:
+      - description: Course Information
+        in: body
+        name: course
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.createCourseRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new course (Instructor only)
+      tags:
+      - Instructor
+  /instructor/courses/{id}:
+    get:
+      description: Retrieves the details of a specific course owned by the logged-in
+        instructor.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course'
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get my course details (Instructor only)
+      tags:
+      - Instructor
+    put:
+      consumes:
+      - application/json
+      description: Updates the title and description of a course owned by the logged-in
+        instructor.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Course Information
+        in: body
+        name: course
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.createCourseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a course (Instructor only)
+      tags:
+      - Instructor
+  /instructor/courses/{id}/materials:
+    get:
+      description: Retrieves all learning materials for a specific course.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get course materials (Instructor only)
+      tags:
+      - Instructor - Materials
+    post:
+      consumes:
+      - application/json
+      description: Adds a new learning material to a specific course.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Material Information
+        in: body
+        name: material
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.addMaterialRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add material to a course (Instructor only)
+      tags:
+      - Instructor - Materials
+  /instructor/courses/{id}/materials/{materialId}:
+    delete:
+      description: Deletes a specific learning material from a course.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Material ID
+        in: path
+        name: materialId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete course material (Instructor only)
+      tags:
+      - Instructor - Materials
+    put:
+      consumes:
+      - application/json
+      description: Updates a specific learning material within a course.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Material ID
+        in: path
+        name: materialId
+        required: true
+        type: string
+      - description: Updated Material Information
+        in: body
+        name: material
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.addMaterialRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update course material (Instructor only)
+      tags:
+      - Instructor - Materials
   /login:
     post:
       consumes:
@@ -391,7 +830,7 @@ paths:
         name: credentials
         required: true
         schema:
-          $ref: '#/definitions/handler.loginRequest'
+          $ref: '#/definitions/internal_handler.loginRequest'
       produces:
       - application/json
       responses:
@@ -431,7 +870,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.User'
+            $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User'
         "404":
           description: Not Found
           schema:
@@ -460,7 +899,7 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/model.User'
+          $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User'
       produces:
       - application/json
       responses:
