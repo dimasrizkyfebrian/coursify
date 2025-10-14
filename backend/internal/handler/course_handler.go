@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -230,4 +231,47 @@ func (h *CourseHandler) GetMaterialsByCourseID(w http.ResponseWriter, r *http.Re
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(materials)
+}
+
+// UpdateMaterial handles requests to edit course materials
+func (h *CourseHandler) UpdateMaterial(w http.ResponseWriter, r *http.Request) {
+	instructorID, _ := r.Context().Value(middleware.UserIDKey).(string)
+	courseID := chi.URLParam(r, "id")
+	materialID := chi.URLParam(r, "materialId")
+
+	// Verify course ownership
+	existingCourse, err := h.Repo.GetCourseByID(courseID)
+	if err != nil || existingCourse == nil {
+		http.Error(w, "Course not found", http.StatusNotFound)
+		return
+	}
+	if existingCourse.InstructorID != instructorID {
+		http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		return
+	}
+
+	// Decode data update from body
+	var materialUpdates model.LearningMaterial
+	if err := json.NewDecoder(r.Body).Decode(&materialUpdates); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Set ID from URL
+	materialUpdates.ID = materialID
+	materialUpdates.CourseID = courseID
+
+	// Call repository to update
+	if err := h.Repo.UpdateMaterial(&materialUpdates); err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Material not found in this course", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to update material", http.StatusInternalServerError)
+		return
+	}
+
+    // Respond with success message
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Material updated successfully"})
 }

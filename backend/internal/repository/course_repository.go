@@ -176,3 +176,31 @@ func (r *CourseRepository) GetMaterialsByCourseID(courseID string) ([]model.Lear
     }
     return materials, nil
 }
+
+// UpdateMaterial method
+func (r *CourseRepository) UpdateMaterial(material *model.LearningMaterial) error {
+	query := `
+		UPDATE learning_materials 
+		SET title = $1, text_content = $2, video_url = $3, updated_at = NOW()
+		WHERE id = $4 AND course_id = $5
+	`
+
+    // Execute the update query
+	result, err := r.DB.Exec(query, material.Title, material.TextContent, material.VideoURL, material.ID, material.CourseID)
+	if err != nil {
+		log.Printf("Error updating material: %v", err)
+		return err
+	}
+
+    // Check if any rows were affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows // Indicates that the material was not found or does not match
+	}
+
+	return nil
+}
