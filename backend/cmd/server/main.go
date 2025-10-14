@@ -4,16 +4,38 @@ import (
 	"log"
 	"net/http"
 
+	_ "github.com/dimasrizkyfebrian/coursify/docs"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 
 	"github.com/dimasrizkyfebrian/coursify/internal/database"
 	"github.com/dimasrizkyfebrian/coursify/internal/handler"
 	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
 	"github.com/dimasrizkyfebrian/coursify/internal/repository"
 )
+
+// @title           Coursify API
+// @version         1.0
+// @description     This is the API documentation for the Coursify application.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   Dimas Rizky Febrian
+// @contact.url    http://www.github.com/dimasrizkyfebrian
+// @contact.email  dimasrfebrian@gmail.com
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8080
+// @BasePath  /api
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description "Type 'Bearer' followed by a space and a JWT token."
 
 func main() {
 	err := godotenv.Load()
@@ -41,6 +63,10 @@ func main() {
 	courseRepo := repository.NewCourseRepository(db)
 	courseHandler := handler.NewCourseHandler(courseRepo)
 
+	// --- Swagger Documentation ---
+	r.Get("/swagger/*", httpSwagger.Handler(
+        httpSwagger.URL("http://localhost:8080/swagger/doc.json"), // Arahkan ke file doc.json
+    ))
 
 	// --- Public Routes ---
 	r.With(middleware.RateLimitMiddleware).Post("/api/register", userHandler.Register)
