@@ -418,3 +418,24 @@ func (h *CourseHandler) DeleteMaterial(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Material deleted successfully"})
 }
+
+// @Summary      Get public course catalog
+// @Description  Retrieves a list of all available courses for anyone to see.
+// @Tags         Public
+// @Produce      json
+// @Success      200  {array}   model.Course
+// @Failure      500  {object}  map[string]string
+// @Router       /courses [get]
+// GetAllCoursesPublic handles requests to retrieve public course catalog
+func (h *CourseHandler) GetAllCoursesPublic(w http.ResponseWriter, r *http.Request) {
+    courses, err := h.Repo.GetAllCourses()
+    if err != nil {
+        http.Error(w, "Could not fetch courses", http.StatusInternalServerError)
+        return
+    }
+
+    // Respond with the list of courses
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(courses)
+}

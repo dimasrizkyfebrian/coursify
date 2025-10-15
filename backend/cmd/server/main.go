@@ -73,6 +73,7 @@ func main() {
 	// --- Public Routes ---
 	r.With(middleware.RateLimitMiddleware).Post("/api/register", userHandler.Register)
 	r.Post("/api/login", userHandler.Login)
+	r.Get("/api/courses", courseHandler.GetAllCoursesPublic)
 
 	// --- Protected Admin Routes ---
 	r.Group(func(r chi.Router) {

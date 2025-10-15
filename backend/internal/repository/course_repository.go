@@ -227,3 +227,29 @@ func (r *CourseRepository) DeleteMaterial(courseID, materialID string) error {
 
 	return nil
 }
+
+// GetAllCourses method
+func (r *CourseRepository) GetAllCourses() ([]model.Course, error) {
+    query := `SELECT id, instructor_id, title, description, cover_image_url, created_at, updated_at
+               FROM courses ORDER BY created_at DESC`
+
+    rows, err := r.DB.Query(query)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var courses []model.Course
+    for rows.Next() {
+        var course model.Course
+        if err := rows.Scan(
+            &course.ID, &course.InstructorID, &course.Title, &course.Description,
+            &course.CoverImageURL, &course.CreatedAt, &course.UpdatedAt,
+        ); err != nil {
+            return nil, err
+        }
+        courses = append(courses, course)
+    }
+
+    return courses, nil
+}

@@ -527,6 +527,38 @@
                 }
             }
         },
+        "/courses": {
+            "get": {
+                "description": "Retrieves a list of all available courses for anyone to see.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Get public course catalog",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/instructor/courses": {
             "get": {
                 "security": [

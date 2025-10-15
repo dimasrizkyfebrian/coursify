@@ -456,6 +456,27 @@ paths:
       summary: Get user statistics (Admin only)
       tags:
       - Admin
+  /courses:
+    get:
+      description: Retrieves a list of all available courses for anyone to see.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get public course catalog
+      tags:
+      - Public
   /instructor/courses:
     get:
       description: Retrieves a list of all courses created by the logged-in instructor.
