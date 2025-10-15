@@ -310,3 +310,26 @@ func (r *CourseRepository) IsStudentEnrolled(studentID, courseID string) (bool, 
     }
     return exists, nil
 }
+
+// UpdateCourseCoverImage method
+func (r *CourseRepository) UpdateCourseCoverImage(courseID, imageURL string) error {
+    query := `UPDATE courses SET cover_image_url = $1, updated_at = NOW() WHERE id = $2`
+
+    // Execute the update query
+    result, err := r.DB.Exec(query, imageURL, courseID)
+    if err != nil {
+        return err
+    }
+
+    // Check if any rows were affected
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        return err
+    }
+
+    if rowsAffected == 0 {
+        return sql.ErrNoRows // Indicates that the course was not found or does not match
+    }
+
+    return nil
+}

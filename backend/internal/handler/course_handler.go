@@ -3,8 +3,13 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
 	"github.com/dimasrizkyfebrian/coursify/internal/model"
@@ -574,4 +579,86 @@ func (h *CourseHandler) GetEnrolledCourseDetails(w http.ResponseWriter, r *http.
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(response)
+}
+
+// @Summary      Upload a cover image for a course (Instructor only)
+// @Description  Uploads a cover image for a specific course owned by the logged-in instructor.
+// @Tags         Instructor
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id    path      string  true  "Course ID"
+// @Param        cover formData  file    true  "Cover Image File (jpg, png, jpeg)"
+// @Success      200   {object}  map[string]string
+// @Failure      400   {object}  map[string]string "e.g., No file uploaded, file too large, invalid file type"
+// @Failure      403   {object}  map[string]string
+// @Failure      404   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /instructor/courses/{id}/upload-cover [post]
+// @Security     BearerAuth
+// UploadCourseCover handles requests to upload course covers
+func (h *CourseHandler) UploadCourseCover(w http.ResponseWriter, r *http.Request) {
+    instructorID, _ := r.Context().Value(middleware.UserIDKey).(string)
+    courseID := chi.URLParam(r, "id")
+
+    // Course ownership verification
+    existingCourse, err := h.Repo.GetCourseByID(courseID)
+    if err != nil || existingCourse == nil {
+        http.Error(w, "Course not found", http.StatusNotFound)
+        return
+    }
+    if existingCourse.InstructorID != instructorID {
+        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+        return
+    }
+
+    // Parse the multipart form, with a size limit of 10 MB
+    if err := r.ParseMultipartForm(10 << 20); err != nil {
+        http.Error(w, "File is too large. Max size is 10MB.", http.StatusBadRequest)
+        return
+    }
+
+    // Retrieve the file from form-data
+    file, handler, err := r.FormFile("cover")
+    if err != nil {
+        http.Error(w, "No file uploaded. Please use 'cover' as the key.", http.StatusBadRequest)
+        return
+    }
+    defer file.Close()
+
+    // Create a unique file name to avoid conflicts
+    // Example: <courseID>-<timestamp>.<extension> -> abc-123-1678886400.png
+    ext := filepath.Ext(handler.Filename)
+    fileName := fmt.Sprintf("%s-%d%s", courseID, time.Now().Unix(), ext)
+
+    // Create an 'uploads' folder if it doesn't exist
+    if err := os.MkdirAll("./uploads", os.ModePerm); err != nil {
+        http.Error(w, "Could not create uploads directory", http.StatusInternalServerError)
+        return
+    }
+
+    // Create a new file on the server
+    filePath := filepath.Join("uploads", fileName)
+    dst, err := os.Create(filePath)
+    if err != nil {
+        http.Error(w, "Could not save the file", http.StatusInternalServerError)
+        return
+    }
+    defer dst.Close()
+
+    // Copy the uploaded file's content to the new file on the server
+    if _, err := io.Copy(dst, file); err != nil {
+        http.Error(w, "Could not copy the file", http.StatusInternalServerError)
+        return
+    }
+
+    // Save the file path to the database
+    // The saved path will become the URL, e.g., /uploads/abc-123-1678886400.png
+    fileURL := "/" + filePath
+    if err := h.Repo.UpdateCourseCoverImage(courseID, fileURL); err != nil {
+        http.Error(w, "Could not update course cover image in DB", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Cover image uploaded successfully", "url": fileURL})
 }

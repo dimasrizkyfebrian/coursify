@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	_ "github.com/dimasrizkyfebrian/coursify/docs"
 	"github.com/go-chi/chi/v5"
@@ -60,6 +62,11 @@ func main() {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 
+	// --- Serve static files from "Uploads" folder ---
+	workDir, _ := os.Getwd()
+    filesDir := http.Dir(filepath.Join(workDir, "uploads"))
+    r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(filesDir)))
+
 	userRepo := repository.NewUserRepository(db)
 	userHandler := handler.NewUserHandler(userRepo)
 	courseRepo := repository.NewCourseRepository(db)
@@ -104,6 +111,7 @@ func main() {
 	r.Get("/api/instructor/courses/{id}/materials", courseHandler.GetMaterialsByCourseID)
 	r.Put("/api/instructor/courses/{id}/materials/{materialId}", courseHandler.UpdateMaterial)
 	r.Delete("/api/instructor/courses/{id}/materials/{materialId}", courseHandler.DeleteMaterial)
+	r.Post("/api/instructor/courses/{id}/upload-cover", courseHandler.UploadCourseCover)
 	})
 
 	// --- Protected Student Routes ---
