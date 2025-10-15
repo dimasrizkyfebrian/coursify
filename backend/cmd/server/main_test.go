@@ -12,6 +12,7 @@ import (
 
 	"github.com/dimasrizkyfebrian/coursify/internal/database"
 	"github.com/dimasrizkyfebrian/coursify/internal/handler"
+	"github.com/dimasrizkyfebrian/coursify/internal/model"
 	"github.com/dimasrizkyfebrian/coursify/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
@@ -36,6 +37,7 @@ func setupTestApp() (*chi.Mux, *sql.DB, func()) {
 
 	// Register the route that will be tested
 	r.Post("/api/login", userHandler.Login)
+	r.Post("/api/register", userHandler.Register)
 
 	// Return the router and teardown function to clean the DB
 	teardown := func() {
@@ -45,7 +47,6 @@ func setupTestApp() (*chi.Mux, *sql.DB, func()) {
 
 	return r, db, teardown
 }
-
 
 func TestLoginIntegration(t *testing.T) {
 	// Setup application
@@ -144,4 +145,59 @@ func TestLoginIntegration(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRegisterIntegration(t *testing.T) {
+	// Setup application
+	router, db, teardown := setupTestApp()
+	defer teardown()
+
+	// Create a test server that uses an application router
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	// Clean the users table before each test
+	_, err := db.Exec("DELETE FROM users")
+	if err != nil {
+		t.Fatalf("Failed to clean users table before test: %v", err)
+	}
+
+	// Run Test Scenario: Registration Successful
+	t.Run("successful registration", func(t *testing.T) {
+		// Create a request body with new user data
+		newUser := map[string]string{
+			"full_name": "New Register Test",
+			"email":     "register@example.com",
+			"password":  "password123",
+			"role":      "student",
+		}
+		body, _ := json.Marshal(newUser)
+
+		// Send a request to the test server
+		resp, err := http.Post(server.URL+"/api/register", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatalf("Failed to send request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		// Check the Results (Assert)
+		// Check Status Code
+		if resp.StatusCode != http.StatusCreated { // Should be 201 Created
+			t.Errorf("expected status %v; got %v", http.StatusCreated, resp.Status)
+		}
+
+		// Check whether the user was actually created in the database
+		var user model.User
+		err = db.QueryRow("SELECT id, full_name, email, role, status FROM users WHERE email = $1", "register@example.com").
+			Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status)
+		
+		if err != nil {
+			t.Fatalf("Failed to find user in database after registration: %v", err)
+		}
+
+		// Check if the new user's status is 'pending'
+		if user.Status != "pending" {
+			t.Errorf("expected user status to be 'pending'; got '%s'", user.Status)
+		}
+	})
 }
