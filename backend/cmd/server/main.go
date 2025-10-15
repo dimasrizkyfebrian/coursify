@@ -112,6 +112,7 @@ func main() {
 	r.Put("/api/instructor/courses/{id}/materials/{materialId}", courseHandler.UpdateMaterial)
 	r.Delete("/api/instructor/courses/{id}/materials/{materialId}", courseHandler.DeleteMaterial)
 	r.Post("/api/instructor/courses/{id}/upload-cover", courseHandler.UploadCourseCover)
+	r.Post("/api/instructor/courses/{id}/materials/upload-pdf", courseHandler.UploadPdfMaterial)
 	})
 
 	// --- Protected Student Routes ---

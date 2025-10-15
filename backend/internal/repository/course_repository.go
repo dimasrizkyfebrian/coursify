@@ -333,3 +333,37 @@ func (r *CourseRepository) UpdateCourseCoverImage(courseID, imageURL string) err
 
     return nil
 }
+
+// AddFileMaterialToCourse method
+func (r *CourseRepository) AddFileMaterialToCourse(material *model.LearningMaterial) error {
+    // Get the latest position for new material
+    var lastPosition int
+    posQuery := `SELECT COALESCE(MAX(position), 0) FROM learning_materials WHERE course_id = $1`
+    err := r.DB.QueryRow(posQuery, material.CourseID).Scan(&lastPosition)
+    if err != nil {
+        log.Printf("Error getting last material position: %v", err)
+        return err
+    }
+    material.Position = lastPosition + 1
+
+    // Add new material with the type 'pdf' and file_url
+    insertQuery := `
+        INSERT INTO learning_materials (course_id, title, content_type, file_url, position)
+        VALUES ($1, $2, 'pdf', $3, $4)
+        RETURNING id, created_at, updated_at
+    `
+    err = r.DB.QueryRow(
+        insertQuery,
+        material.CourseID,
+        material.Title,
+        material.FileURL,
+        material.Position,
+    ).Scan(&material.ID, &material.CreatedAt, &material.UpdatedAt)
+
+    if err != nil {
+        log.Printf("Error adding file material to course: %v", err)
+        return err
+    }
+
+    return nil
+}

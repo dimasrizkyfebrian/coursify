@@ -908,6 +908,63 @@ paths:
       summary: Update course material (Instructor only)
       tags:
       - Instructor - Materials
+  /instructor/courses/{id}/materials/upload-pdf:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a PDF file as a new learning material for a course.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Title of the material
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: PDF file to upload
+        in: formData
+        name: pdf
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload a PDF material for a course (Instructor only)
+      tags:
+      - Instructor - Materials
   /instructor/courses/{id}/upload-cover:
     post:
       consumes:

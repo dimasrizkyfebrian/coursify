@@ -659,6 +659,102 @@ func (h *CourseHandler) UploadCourseCover(w http.ResponseWriter, r *http.Request
         return
     }
 
+    // Respond with success message
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Cover image uploaded successfully", "url": fileURL})
+}
+
+// @Summary      Upload a PDF material for a course (Instructor only)
+// @Description  Uploads a PDF file as a new learning material for a course.
+// @Tags         Instructor - Materials
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id    path      string  true  "Course ID"
+// @Param        title formData  string  true  "Title of the material"
+// @Param        pdf   formData  file    true  "PDF file to upload"
+// @Success      201   {object}  model.LearningMaterial
+// @Failure      400   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Failure      404   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /instructor/courses/{id}/materials/upload-pdf [post]
+// @Security     BearerAuth
+// UploadPdfMaterial handles requests to upload PDF materials
+func (h *CourseHandler) UploadPdfMaterial(w http.ResponseWriter, r *http.Request) {
+    instructorID, _ := r.Context().Value(middleware.UserIDKey).(string)
+    courseID := chi.URLParam(r, "id")
+
+    // Course ownership verification
+    existingCourse, err := h.Repo.GetCourseByID(courseID)
+    if err != nil || existingCourse == nil {
+        http.Error(w, "Course not found", http.StatusNotFound)
+        return
+    }
+    if existingCourse.InstructorID != instructorID {
+        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+        return
+    }
+
+    // Parse form, maximum size 10 MB
+    if err := r.ParseMultipartForm(10 << 20); err != nil {
+        http.Error(w, "File is too large. Max size is 10MB.", http.StatusBadRequest)
+        return
+    }
+
+    // Retrieve the file from form-data with the key 'pdf'
+    file, handler, err := r.FormFile("pdf")
+    if err != nil {
+        http.Error(w, "No file uploaded. Please use 'pdf' as the file key.", http.StatusBadRequest)
+        return
+    }
+    defer file.Close()
+
+    // Take the title from the form data
+    title := r.FormValue("title")
+    if strings.TrimSpace(title) == "" {
+        http.Error(w, "Title is required.", http.StatusBadRequest)
+        return
+    }
+
+    // Create a unique file name
+    ext := filepath.Ext(handler.Filename)
+    fileName := fmt.Sprintf("%s-%d%s", courseID, time.Now().Unix(), ext)
+
+    // Create the 'uploads/materials' directory if it doesn't exist
+    uploadDir := filepath.Join("uploads", "materials")
+    if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+        http.Error(w, "Could not create uploads directory", http.StatusInternalServerError)
+        return
+    }
+
+    // Save the file to the server
+    filePath := filepath.Join(uploadDir, fileName)
+    dst, err := os.Create(filePath)
+    if err != nil {
+        http.Error(w, "Could not save the file", http.StatusInternalServerError)
+        return
+    }
+    defer dst.Close()
+
+    if _, err := io.Copy(dst, file); err != nil {
+        http.Error(w, "Could not copy the file content", http.StatusInternalServerError)
+        return
+    }
+
+    // Prepare the data to be stored in the database
+    material := &model.LearningMaterial{
+        CourseID: courseID,
+        Title:    title,
+        FileURL:  "/" + filePath, // Save as URL path
+    }
+
+    // Call the repository to create a new material entry
+    if err := h.Repo.AddFileMaterialToCourse(material); err != nil {
+        http.Error(w, "Could not create material in database", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(material)
 }
