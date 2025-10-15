@@ -56,44 +56,92 @@ func TestLoginIntegration(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
+	// Clean the users table before each test
+	_, err := db.Exec("DELETE FROM users")
+	if err != nil {
+		t.Fatalf("Failed to clean users table before test: %v", err)
+	}
+
 	// Preparation data test
 	// Create test users directly in the test database
 	password := "password123"
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
-	// Insert a test user into the database
-	_, err := db.Exec("INSERT INTO users (full_name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5)", 
-        "Test User", "test@example.com", string(hashedPassword), "student", "active")
-    if err != nil {
-        t.Fatalf("Failed to insert test user: %v", err)
-    }
+	// Insert an active test user into the database
+	_, err = db.Exec("INSERT INTO users (full_name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5)",
+		"Active User", "active@example.com", string(hashedPassword), "student", "active")
+	if err != nil {
+		t.Fatalf("Failed to insert active user for test: %v", err)
+	}
 
-	// Run Test Scenario: Successful Login
-	t.Run("successful login", func(t *testing.T) {
-		// Create body request
-		credentials := map[string]string{
-			"email":    "test@example.com",
-			"password": password,
-		}
-		body, _ := json.Marshal(credentials)
+	// Insert a pending test user into the database
+	_, err = db.Exec("INSERT INTO users (full_name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5)",
+		"Pending User", "pending@example.com", string(hashedPassword), "student", "pending")
+	if err != nil {
+		t.Fatalf("Failed to insert pending user for test: %v", err)
+	}
 
-		// Send a request to the test server
-		resp, err := http.Post(server.URL+"/api/login", "application/json", bytes.NewBuffer(body))
-		if err != nil {
-			t.Fatalf("Failed to send request: %v", err)
-		}
-		defer resp.Body.Close()
+	// Define Test Cases
+	testCases := []struct {
+		name           string
+		email          string
+		password       string
+		expectedStatus int
+	}{
+		{
+			name:           "successful login",
+			email:          "active@example.com",
+			password:       "password123",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "wrong password",
+			email:          "active@example.com",
+			password:       "wrongpassword",
+			expectedStatus: http.StatusUnauthorized, // 401
+		},
+		{
+			name:           "email not found",
+			email:          "notfound@example.com",
+			password:       "password123",
+			expectedStatus: http.StatusUnauthorized, // 401
+		},
+		{
+			name:           "account not active",
+			email:          "pending@example.com",
+			password:       "password123",
+			expectedStatus: http.StatusForbidden, // 403
+		},
+	}
 
-		// Check Results (Assert)
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("expected status OK; got %v", resp.Status)
-		}
+	// Run Test All Scenario
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			credentials := map[string]string{
+				"email":    tc.email,
+				"password": tc.password,
+			}
+			body, _ := json.Marshal(credentials)
 
-		var responseBody map[string]string
-		json.NewDecoder(resp.Body).Decode(&responseBody)
+			resp, err := http.Post(server.URL+"/api/login", "application/json", bytes.NewBuffer(body))
+			if err != nil {
+				t.Fatalf("Failed to send request: %v", err)
+			}
+			defer resp.Body.Close()
 
-		if _, ok := responseBody["token"]; !ok {
-			t.Errorf("expected response body to contain a token")
-		}
-	})
+			// Check result (Assert)
+			if resp.StatusCode != tc.expectedStatus {
+				t.Errorf("expected status %v; got %v", tc.expectedStatus, resp.Status)
+			}
+
+			// Specifically for a successful test, check the token
+			if tc.expectedStatus == http.StatusOK {
+				var responseBody map[string]string
+				json.NewDecoder(resp.Body).Decode(&responseBody)
+				if _, ok := responseBody["token"]; !ok {
+					t.Errorf("expected response body to contain a token")
+				}
+			}
+		})
+	}
 }
