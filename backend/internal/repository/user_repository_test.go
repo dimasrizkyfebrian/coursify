@@ -103,3 +103,39 @@ func TestCreateUser(t *testing.T) {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }
+
+func TestUpdateUserStatus(t *testing.T) {
+	// Setup mock database
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	repo := NewUserRepository(db)
+
+	// Define input data
+	userID := "test-user-id"
+	newStatus := "active"
+
+	// Query sql that is expected to be executed
+	expectedSQL := regexp.QuoteMeta(`UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`)
+
+	// Set expectation in mock
+	mock.ExpectExec(expectedSQL).
+		WithArgs(newStatus, userID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Run function to be tested
+	err = repo.UpdateUserStatus(userID, newStatus)
+
+	// Check the result (Assert)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// Ensure all expectations are met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
