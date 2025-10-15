@@ -112,6 +112,7 @@ func main() {
     r.Use(middleware.StudentOnly)
 
     r.Post("/api/courses/{id}/enroll", courseHandler.EnrollInCourse)
+	r.Get("/api/student/my-courses", courseHandler.GetMyEnrolledCourses)
 	})
 	
 	// --- Protected General Routes ---

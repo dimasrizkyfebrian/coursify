@@ -267,3 +267,34 @@ func (r *CourseRepository) EnrollStudent(studentID, courseID string) error {
 
     return nil
 }
+
+// GetEnrolledCoursesByStudentID method
+func (r *CourseRepository) GetEnrolledCoursesByStudentID(studentID string) ([]model.Course, error) {
+    query := `
+        SELECT c.id, c.instructor_id, c.title, c.description, c.cover_image_url, c.created_at, c.updated_at
+        FROM courses c
+        JOIN enrollments e ON c.id = e.course_id
+        WHERE e.user_id = $1
+        ORDER BY e.enrollment_date DESC
+    `
+
+    rows, err := r.DB.Query(query, studentID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var courses []model.Course
+    for rows.Next() {
+        var course model.Course
+        if err := rows.Scan(
+            &course.ID, &course.InstructorID, &course.Title, &course.Description,
+            &course.CoverImageURL, &course.CreatedAt, &course.UpdatedAt,
+        ); err != nil {
+            return nil, err
+        }
+        courses = append(courses, course)
+    }
+
+    return courses, nil
+}

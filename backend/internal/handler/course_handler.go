@@ -481,3 +481,34 @@ func (h *CourseHandler) EnrollInCourse(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusCreated)
     json.NewEncoder(w).Encode(map[string]string{"message": "Successfully enrolled in the course"})
 }
+
+// @Summary      Get my enrolled courses (Student only)
+// @Description  Retrieves a list of all courses the logged-in student is enrolled in.
+// @Tags         Student
+// @Produce      json
+// @Success      200  {array}   model.Course
+// @Failure      403  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /student/my-courses [get]
+// @Security     BearerAuth
+// GetMyEnrolledCourses handles requests to retrieve enrolled courses of a student
+func (h *CourseHandler) GetMyEnrolledCourses(w http.ResponseWriter, r *http.Request) {
+    // Get the student ID from the JWT context
+    studentID, ok := r.Context().Value(middleware.UserIDKey).(string)
+    if !ok {
+        http.Error(w, "Could not retrieve student ID from context", http.StatusInternalServerError)
+        return
+    }
+
+    // Fetch enrolled courses from the repository
+    courses, err := h.Repo.GetEnrolledCoursesByStudentID(studentID)
+    if err != nil {
+        http.Error(w, "Failed to fetch enrolled courses", http.StatusInternalServerError)
+        return
+    }
+
+    // Respond with the list of courses
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(courses)
+}

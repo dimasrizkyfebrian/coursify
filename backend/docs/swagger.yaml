@@ -477,6 +477,53 @@ paths:
       summary: Get public course catalog
       tags:
       - Public
+  /courses/{id}/enroll:
+    post:
+      description: Enrolls the currently logged-in student into a specific course.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Course not found (due to foreign key constraint)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Student is already enrolled in this course
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Enroll in a course (Student only)
+      tags:
+      - Student
   /instructor/courses:
     get:
       description: Retrieves a list of all courses created by the logged-in instructor.
@@ -945,6 +992,36 @@ paths:
       summary: Register a new user
       tags:
       - Auth
+  /student/my-courses:
+    get:
+      description: Retrieves a list of all courses the logged-in student is enrolled
+        in.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get my enrolled courses (Student only)
+      tags:
+      - Student
 securityDefinitions:
   BearerAuth:
     description: '"Type ''Bearer'' followed by a space and a JWT token."'
