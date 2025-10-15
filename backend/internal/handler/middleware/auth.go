@@ -79,3 +79,14 @@ func InstructorOnly(next http.Handler) http.Handler {
         next.ServeHTTP(w, r)
     })
 }
+
+func StudentOnly(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        role, ok := r.Context().Value(UserRoleKey).(string)
+        if !ok || role != "student" {
+            http.Error(w, "Forbidden: Students only", http.StatusForbidden)
+            return
+        }
+        next.ServeHTTP(w, r)
+    })
+}

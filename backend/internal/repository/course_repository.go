@@ -253,3 +253,17 @@ func (r *CourseRepository) GetAllCourses() ([]model.Course, error) {
 
     return courses, nil
 }
+
+// EnrollStudent method
+func (r *CourseRepository) EnrollStudent(studentID, courseID string) error {
+    query := `INSERT INTO enrollments (user_id, course_id) VALUES ($1, $2)`
+
+    // Execute the insert query
+    _, err := r.DB.Exec(query, studentID, courseID)
+    if err != nil {
+        log.Printf("Error enrolling student: %v", err)
+        return err
+    }
+
+    return nil
+}

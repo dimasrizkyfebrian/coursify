@@ -439,3 +439,45 @@ func (h *CourseHandler) GetAllCoursesPublic(w http.ResponseWriter, r *http.Reque
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(courses)
 }
+
+// @Summary      Enroll in a course (Student only)
+// @Description  Enrolls the currently logged-in student into a specific course.
+// @Tags         Student
+// @Produce      json
+// @Param        id   path      string  true  "Course ID"
+// @Success      201  {object}  map[string]string
+// @Failure      403  {object}  map[string]string
+// @Failure      404  {object}  map[string]string "Course not found (due to foreign key constraint)"
+// @Failure      409  {object}  map[string]string "Student is already enrolled in this course"
+// @Failure      500  {object}  map[string]string
+// @Router       /courses/{id}/enroll [post]
+// @Security     BearerAuth
+// EnrollInCourse handles requests to enroll students in courses
+func (h *CourseHandler) EnrollInCourse(w http.ResponseWriter, r *http.Request) {
+    // Get student ID from the JWT context
+    studentID, ok := r.Context().Value(middleware.UserIDKey).(string)
+    if !ok {
+        http.Error(w, "Could not retrieve student ID from context", http.StatusInternalServerError)
+        return
+    }
+
+    // Get course id from url parameter
+    courseID := chi.URLParam(r, "id")
+
+    // Call repository to register students
+    err := h.Repo.EnrollStudent(studentID, courseID)
+    if err != nil {
+        // Check if the error is caused by duplication (unique constraint violation)
+        // Code '23505' is the standard PostgreSQL error code for this.
+        if strings.Contains(err.Error(), "23505") {
+            http.Error(w, "You are already enrolled in this course", http.StatusConflict) // 409 Conflict
+            return
+        }
+        http.Error(w, "Failed to enroll in course", http.StatusInternalServerError)
+        return
+    }
+
+    // Respond with success message
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Successfully enrolled in the course"})
+}

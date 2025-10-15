@@ -105,6 +105,14 @@ func main() {
 	r.Put("/api/instructor/courses/{id}/materials/{materialId}", courseHandler.UpdateMaterial)
 	r.Delete("/api/instructor/courses/{id}/materials/{materialId}", courseHandler.DeleteMaterial)
 	})
+
+	// --- Protected Student Routes ---
+	r.Group(func(r chi.Router) {
+    r.Use(middleware.AuthMiddleware)
+    r.Use(middleware.StudentOnly)
+
+    r.Post("/api/courses/{id}/enroll", courseHandler.EnrollInCourse)
+	})
 	
 	// --- Protected General Routes ---
 	r.Group(func(r chi.Router) {
