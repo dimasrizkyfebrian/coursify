@@ -298,3 +298,15 @@ func (r *CourseRepository) GetEnrolledCoursesByStudentID(studentID string) ([]mo
 
     return courses, nil
 }
+
+// IsStudentEnrolled method
+func (r *CourseRepository) IsStudentEnrolled(studentID, courseID string) (bool, error) {
+    var exists bool
+    query := `SELECT EXISTS(SELECT 1 FROM enrollments WHERE user_id = $1 AND course_id = $2)`
+
+    err := r.DB.QueryRow(query, studentID, courseID).Scan(&exists)
+    if err != nil {
+        return false, err
+    }
+    return exists, nil
+}

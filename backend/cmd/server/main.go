@@ -113,6 +113,7 @@ func main() {
 
     r.Post("/api/courses/{id}/enroll", courseHandler.EnrollInCourse)
 	r.Get("/api/student/my-courses", courseHandler.GetMyEnrolledCourses)
+	r.Get("/api/student/courses/{id}", courseHandler.GetEnrolledCourseDetails)
 	})
 	
 	// --- Protected General Routes ---

@@ -32,6 +32,11 @@ type addMaterialRequest struct {
 	VideoURL    string `json:"video_url,omitempty" example:"https://youtube.com/watch?v=..."`
 }
 
+type courseWithMaterials struct {
+    model.Course
+    Materials []model.LearningMaterial `json:"materials"`
+}
+
 // @Summary      Create a new course (Instructor only)
 // @Description  Creates a new course for the logged-in instructor.
 // @Tags         Instructor
@@ -511,4 +516,62 @@ func (h *CourseHandler) GetMyEnrolledCourses(w http.ResponseWriter, r *http.Requ
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(courses)
+}
+
+// @Summary      Get enrolled course details (Student only)
+// @Description  Retrieves details and all materials for a specific course the student is enrolled in.
+// @Tags         Student
+// @Produce      json
+// @Param        id   path      string  true  "Course ID"
+// @Success      200  {object}  handler.courseWithMaterials
+// @Failure      403  {object}  map[string]string "Returned if the student is not enrolled in the course"
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /student/courses/{id} [get]
+// @Security     BearerAuth
+// GetEnrolledCourseDetails handles requests to retrieve enrolled course details
+func (h *CourseHandler) GetEnrolledCourseDetails(w http.ResponseWriter, r *http.Request) {
+    // Get the student ID from the JWT context
+    studentID, ok := r.Context().Value(middleware.UserIDKey).(string)
+    if !ok {
+        http.Error(w, "Could not retrieve student ID", http.StatusInternalServerError)
+        return
+    }
+
+    courseID := chi.URLParam(r, "id")
+
+    // Verify enrollment
+    isEnrolled, err := h.Repo.IsStudentEnrolled(studentID, courseID)
+    if err != nil {
+        http.Error(w, "Failed to verify enrollment", http.StatusInternalServerError)
+        return
+    }
+    if !isEnrolled {
+        http.Error(w, "Forbidden: You are not enrolled in this course", http.StatusForbidden)
+        return
+    }
+
+    // Get course details and materials
+    course, err := h.Repo.GetCourseByID(courseID)
+    if err != nil || course == nil {
+        http.Error(w, "Course not found", http.StatusNotFound)
+        return
+    }
+
+    materials, err := h.Repo.GetMaterialsByCourseID(courseID)
+    if err != nil {
+        http.Error(w, "Failed to fetch materials", http.StatusInternalServerError)
+        return
+    }
+
+    // Combine into one response
+    response := courseWithMaterials{
+        Course:    *course,
+        Materials: materials,
+    }
+
+    // Respond with the course details and materials
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(response)
 }

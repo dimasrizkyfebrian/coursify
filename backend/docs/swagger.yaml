@@ -78,6 +78,27 @@ definitions:
         example: https://youtube.com/watch?v=...
         type: string
     type: object
+  internal_handler.courseWithMaterials:
+    properties:
+      cover_image_url:
+        $ref: '#/definitions/sql.NullString'
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      instructor_id:
+        type: string
+      materials:
+        items:
+          $ref: '#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial'
+        type: array
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
   internal_handler.createCourseRequest:
     properties:
       description:
@@ -992,6 +1013,46 @@ paths:
       summary: Register a new user
       tags:
       - Auth
+  /student/courses/{id}:
+    get:
+      description: Retrieves details and all materials for a specific course the student
+        is enrolled in.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handler.courseWithMaterials'
+        "403":
+          description: Returned if the student is not enrolled in the course
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get enrolled course details (Student only)
+      tags:
+      - Student
   /student/my-courses:
     get:
       description: Retrieves a list of all courses the logged-in student is enrolled

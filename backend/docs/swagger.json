@@ -1353,6 +1353,67 @@
                 }
             }
         },
+        "/student/courses/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves details and all materials for a specific course the student is enrolled in.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Student"
+                ],
+                "summary": "Get enrolled course details (Student only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Course ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.courseWithMaterials"
+                        }
+                    },
+                    "403": {
+                        "description": "Returned if the student is not enrolled in the course",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/student/my-courses": {
             "get": {
                 "security": [
@@ -1514,6 +1575,38 @@
                 "video_url": {
                     "type": "string",
                     "example": "https://youtube.com/watch?v=..."
+                }
+            }
+        },
+        "internal_handler.courseWithMaterials": {
+            "type": "object",
+            "properties": {
+                "cover_image_url": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instructor_id": {
+                    "type": "string"
+                },
+                "materials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
