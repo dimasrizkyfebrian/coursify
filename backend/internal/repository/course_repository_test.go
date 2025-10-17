@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"regexp"
 	"testing"
 	"time"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestCreateCourse(t *testing.T) {
-	// Setup Application
+	// Setup mock database
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -57,6 +58,56 @@ func TestCreateCourse(t *testing.T) {
 	}
 
 	// Make sure all expectations are met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestGetCoursesByInstructorID(t *testing.T) {
+	// Setup mock database
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	repo := NewCourseRepository(db)
+
+	// Define the input data and expectations
+	instructorID := "instructor-123"
+
+	// Course data that is expected will be returned by the database
+	expectedCourses := []model.Course{
+		{ID: "course-1", InstructorID: instructorID, Title: "Course One", Description: "Desc One"},
+		{ID: "course-2", InstructorID: instructorID, Title: "Course Two", Description: "Desc Two"},
+	}
+
+	// SQL query that is expected to be executed
+	expectedSQL := regexp.QuoteMeta(`SELECT id, instructor_id, title, description, cover_image_url, created_at, updated_at FROM courses WHERE instructor_id = $1 ORDER BY created_at DESC`)
+
+	// Prepare the row of data that will be 'returned' by the fake database
+	rows := sqlmock.NewRows([]string{"id", "instructor_id", "title", "description", "cover_image_url", "created_at", "updated_at"}).
+		AddRow(expectedCourses[0].ID, expectedCourses[0].InstructorID, expectedCourses[0].Title, expectedCourses[0].Description, sql.NullString{}, time.Now(), time.Now()).
+		AddRow(expectedCourses[1].ID, expectedCourses[1].InstructorID, expectedCourses[1].Title, expectedCourses[1].Description, sql.NullString{}, time.Now(), time.Now())
+
+	// Set expectations in the Mock
+	mock.ExpectQuery(expectedSQL).WithArgs(instructorID).WillReturnRows(rows)
+
+	// Run the function that will be tested
+	courses, err := repo.GetCoursesByInstructorID(instructorID)
+
+	// Check the result (Assert)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if len(courses) != 2 {
+		t.Errorf("expected 2 courses, but got %d", len(courses))
+	}
+	if courses[0].Title != expectedCourses[0].Title {
+		t.Errorf("expected first course title to be '%s', but got '%s'", expectedCourses[0].Title, courses[0].Title)
+	}
+
+	// Ensure all expectations are met
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
