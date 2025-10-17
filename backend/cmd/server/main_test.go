@@ -12,6 +12,7 @@ import (
 
 	"github.com/dimasrizkyfebrian/coursify/internal/database"
 	"github.com/dimasrizkyfebrian/coursify/internal/handler"
+	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
 	"github.com/dimasrizkyfebrian/coursify/internal/model"
 	"github.com/dimasrizkyfebrian/coursify/internal/repository"
 	"github.com/go-chi/chi/v5"
@@ -21,7 +22,7 @@ import (
 
 // setupTestApp initializes the entire application for testing
 func setupTestApp() (*chi.Mux, *sql.DB, func()) {
-	// Muat environment variables untuk tes
+	// Load environment variables from .env file
 	if err := godotenv.Load("../../.env"); err != nil {
 		log.Fatalf("Error loading .env file for test: %v", err)
 	}
@@ -35,9 +36,17 @@ func setupTestApp() (*chi.Mux, *sql.DB, func()) {
 	userRepo := repository.NewUserRepository(db)
 	userHandler := handler.NewUserHandler(userRepo)
 
-	// Register the route that will be tested
+	// --- Public Route ---
 	r.Post("/api/login", userHandler.Login)
 	r.Post("/api/register", userHandler.Register)
+
+	// --- Protected Admin Route ---
+	r.Group(func(r chi.Router) {
+        r.Use(middleware.AuthMiddleware)
+        r.Use(middleware.AdminOnly)
+
+        r.Put("/api/admin/users/{id}/approve", userHandler.ApproveUser)
+    })
 
 	// Return the router and teardown function to clean the DB
 	teardown := func() {
@@ -198,6 +207,93 @@ func TestRegisterIntegration(t *testing.T) {
 		// Check if the new user's status is 'pending'
 		if user.Status != "pending" {
 			t.Errorf("expected user status to be 'pending'; got '%s'", user.Status)
+		}
+	})
+}
+
+func TestApproveUserIntegration(t *testing.T) {
+	// Setup Application
+	router, db, teardown := setupTestApp()
+	defer teardown()
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	// Clean the users table before each test
+	_, err := db.Exec("DELETE FROM users")
+	if err != nil {
+		t.Fatalf("Failed to clean users table: %v", err)
+	}
+
+	// Data test preparation
+	adminUser := model.User{FullName: "Admin Test", Email: "admin@test.com", Role: "admin", Status: "active"}
+	instructorUser := model.User{FullName: "Instructor Test", Email: "instructor@test.com", Role: "instructor", Status: "active"}
+	pendingUser := model.User{FullName: "Pending Test", Email: "pending@test.com", Role: "student", Status: "pending"}
+
+	// Insert test users into the database
+	for _, u := range []*model.User{&adminUser, &instructorUser, &pendingUser} {
+		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+		err := db.QueryRow("INSERT INTO users (full_name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+			u.FullName, u.Email, string(hashedPassword), u.Role, u.Status).Scan(&u.ID)
+		if err != nil {
+			t.Fatalf("Failed to insert user %s: %v", u.Email, err)
+		}
+	}
+
+	// Helper function for login and obtaining the original token
+	getToken := func(email, password string) string {
+		credentials := map[string]string{"email": email, "password": password}
+		body, _ := json.Marshal(credentials)
+		resp, _ := http.Post(server.URL+"/api/login", "application/json", bytes.NewBuffer(body))
+		var tokenResp map[string]string
+		json.NewDecoder(resp.Body).Decode(&tokenResp)
+		return tokenResp["token"]
+	}
+
+	// Test Cases
+	t.Run("fails when non-admin tries to approve", func(t *testing.T) {
+		token := getToken("instructor@test.com", "password123")
+
+		req, _ := http.NewRequest(http.MethodPut, server.URL+"/api/admin/users/"+pendingUser.ID+"/approve", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("expected status 403 Forbidden; got %v", resp.Status)
+		}
+	})
+
+	t.Run("successfully approves user when admin", func(t *testing.T) {
+		token := getToken("admin@test.com", "password123")
+
+		req, _ := http.NewRequest(http.MethodPut, server.URL+"/api/admin/users/"+pendingUser.ID+"/approve", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("expected status 200 OK; got %v", resp.Status)
+		}
+
+		// Verify changes in the database
+		var updatedStatus string
+		err = db.QueryRow("SELECT status FROM users WHERE id = $1", pendingUser.ID).Scan(&updatedStatus)
+		if err != nil {
+			t.Fatalf("Failed to query updated user: %v", err)
+		}
+
+		if updatedStatus != "active" {
+			t.Errorf("expected status to be 'active'; got '%s'", updatedStatus)
 		}
 	})
 }
