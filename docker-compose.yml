@@ -17,8 +17,8 @@ services:
     restart: unless-stopped
 
   # 2. Service for backend application
-  app:
-    container_name: coursify_app
+  backend:
+    container_name: coursify_backend
     # 'build' will tell docker-compose to build the image from the Dockerfile.
     build:
       context: ./backend # The folder location containing the Dockerfile
@@ -33,6 +33,19 @@ services:
       - ./backend/uploads:/uploads # Synchronizing the local 'uploads' folder with the one in the container
     depends_on:
       - db # Instruct Docker to run the 'db' service first before 'app'
+    restart: unless-stopped
+
+  # 3. Service for frontend application
+  frontend:
+    container_name: coursify_frontend
+    build:
+      context: ./frontend
+    ports:
+      - "5173:80" # Access from the browser via localhost:5173, Nginx in the container runs on port 80
+    environment:
+      - VITE_API_BASE_URL=http://backend:8080/api
+    depends_on:
+      - backend # Instruct Docker to run the 'app' service first before 'frontend'
     restart: unless-stopped
 
 # Defining the volume to be used for data persistence

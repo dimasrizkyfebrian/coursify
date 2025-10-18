@@ -2,7 +2,7 @@ import axios, { isAxiosError } from 'axios'
 
 // Create an Axios instance with the base URL
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api', // Replace with your API base URL
+  baseURL: import.meta.env.VITE_API_BASE_URL,
 })
 
 // Request interceptor to add the token to the Authorization header

@@ -4,7 +4,7 @@ import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 import { RouterLink } from 'vue-router'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardFooter, CardTitle } from '@/components/ui/card'
 import { Users, UserCheck, UserPlus } from 'lucide-vue-next'
 import { Skeleton } from '@/components/ui/skeleton'
 
