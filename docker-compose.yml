@@ -28,6 +28,7 @@ services:
       - ./backend/.env
     environment:
       - DB_HOST=db
+      - DB_PORT=5432
     volumes:
       - ./backend/uploads:/uploads # Synchronizing the local 'uploads' folder with the one in the container
     depends_on:
