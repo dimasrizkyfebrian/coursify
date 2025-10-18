@@ -46,6 +46,7 @@ func setupTestApp() (*chi.Mux, *sql.DB, func()) {
         r.Use(middleware.AdminOnly)
 
         r.Put("/api/admin/users/{id}/approve", userHandler.ApproveUser)
+		r.Delete("/api/admin/users/{id}", userHandler.DeleteUser)
     })
 
 	// Return the router and teardown function to clean the DB
@@ -294,6 +295,96 @@ func TestApproveUserIntegration(t *testing.T) {
 
 		if updatedStatus != "active" {
 			t.Errorf("expected status to be 'active'; got '%s'", updatedStatus)
+		}
+	})
+}
+
+func TestDeleteUserIntegration(t *testing.T) {
+	// Setup Application
+	router, db, teardown := setupTestApp()
+	defer teardown()
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	// Data test preparation
+	getToken := func(email, password string) string {
+		credentials := map[string]string{"email": email, "password": password}
+		body, _ := json.Marshal(credentials)
+		resp, err := http.Post(server.URL+"/api/login", "application/json", bytes.NewBuffer(body))
+		if err != nil || resp.StatusCode != http.StatusOK {
+			t.Fatalf("Helper function getToken failed for email %s", email)
+		}
+		var tokenResp map[string]string
+		json.NewDecoder(resp.Body).Decode(&tokenResp)
+		resp.Body.Close()
+		return tokenResp["token"]
+	}
+
+	// Test case
+	t.Run("fails when non-admin tries to delete", func(t *testing.T) {
+		// Set up specific data for this test
+		db.Exec("DELETE FROM users")
+		instructorUser := model.User{FullName: "Instructor Test", Email: "instructor@test.com", Role: "instructor", Status: "active"}
+		userToDelete := model.User{FullName: "To Delete", Email: "todelete@test.com", Role: "student", Status: "active"}
+		for _, u := range []*model.User{&instructorUser, &userToDelete} {
+			hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+			db.QueryRow("INSERT INTO users (full_name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+				u.FullName, u.Email, string(hashedPassword), u.Role, u.Status).Scan(&u.ID)
+		}
+
+		token := getToken("instructor@test.com", "password123") // Get tokens as an instructor
+
+		req, _ := http.NewRequest(http.MethodDelete, server.URL+"/api/admin/users/"+userToDelete.ID, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("expected status 403 Forbidden; got %v", resp.Status)
+		}
+	})
+
+	t.Run("successfully deletes user when admin", func(t *testing.T) {
+		// Set up specific data for this test
+		db.Exec("DELETE FROM users")
+		adminUser := model.User{FullName: "Admin Test", Email: "admin@test.com", Role: "admin", Status: "active"}
+		userToDelete := model.User{FullName: "To Delete", Email: "todelete@test.com", Role: "student", Status: "active"}
+		for _, u := range []*model.User{&adminUser, &userToDelete} {
+			hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+			db.QueryRow("INSERT INTO users (full_name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+				u.FullName, u.Email, string(hashedPassword), u.Role, u.Status).Scan(&u.ID)
+		}
+
+		token := getToken("admin@test.com", "password123") // Get tokens as an admin
+
+		req, _ := http.NewRequest(http.MethodDelete, server.URL+"/api/admin/users/"+userToDelete.ID, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("expected status 200 OK; got %v", resp.Status)
+		}
+
+		// Verify that the user is truly removed from the database
+		var count int
+		err = db.QueryRow("SELECT COUNT(*) FROM users WHERE id = $1", userToDelete.ID).Scan(&count)
+		if err != nil {
+			t.Fatalf("Failed to query deleted user: %v", err)
+		}
+
+		if count != 0 {
+			t.Errorf("expected user count to be 0; got %d", count)
 		}
 	})
 }
