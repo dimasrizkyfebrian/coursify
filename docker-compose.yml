@@ -1,0 +1,39 @@
+version: "3.8"
+
+# Define all services (containers) that will be run
+services:
+  # 1. Service for PostgreSQL Database
+  db:
+    image: postgres:15-alpine # Using the official lightweight PostgreSQL version 15 image.
+    container_name: coursify_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=20022003
+      - POSTGRES_DB=coursify
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Creating persistent database data
+    restart: unless-stopped
+
+  # 2. Service for backend application
+  app:
+    container_name: coursify_app
+    # 'build' will tell docker-compose to build the image from the Dockerfile.
+    build:
+      context: ./backend # The folder location containing the Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    environment:
+      - DB_HOST=db
+    volumes:
+      - ./backend/uploads:/uploads # Synchronizing the local 'uploads' folder with the one in the container
+    depends_on:
+      - db # Instruct Docker to run the 'db' service first before 'app'
+    restart: unless-stopped
+
+# Defining the volume to be used for data persistence
+volumes:
+  postgres_data:
