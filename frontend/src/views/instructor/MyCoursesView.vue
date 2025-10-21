@@ -6,15 +6,9 @@ import { toast } from 'vue-sonner'
 
 // Import components
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from '@/components/ui/card'
+import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { PlusCircle, Pencil } from 'lucide-vue-next'
 import CreateCourseDialog from '@/components/instructor/my-courses/CreateCourseDialog.vue'
 import EditCourseDialog from '@/components/instructor/my-courses/EditCourseDialog.vue'
@@ -41,17 +35,31 @@ async function fetchMyCourses() {
   }
 }
 
+// Fetch my courses when the component mounts
 onMounted(() => {
   fetchMyCourses()
 })
 
+// Open the create course modal
 function openCreateCourseModal() {
   isCreateModalOpen.value = true
 }
 
+// Open the edit course modal
 function openEditCourseModal(course: any) {
   selectedCourse.value = course
   isEditModalOpen.value = true
+}
+
+// Placeholder image URL
+const placeholderImage = '/images/covers/placeholder.webp'
+
+// Get the course image URL
+function getCourseImageUrl(coverUrl: any) {
+  if (coverUrl && coverUrl.Valid && coverUrl.String) {
+    return coverUrl.String
+  }
+  return placeholderImage
 }
 </script>
 
@@ -69,7 +77,17 @@ function openEditCourseModal(course: any) {
         </Button>
       </div>
       <div v-if="isLoading" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Skeleton v-for="i in 3" :key="i" class="h-48 rounded-lg" />
+        <Card v-for="i in 3" :key="i" class="rounded-lg overflow-hidden">
+          <AspectRatio :ratio="16 / 9">
+            <Skeleton class="w-full h-full" />
+          </AspectRatio>
+          <div class="p-4">
+            <Skeleton class="h-5 w-3/4 mb-2" />
+            <Skeleton class="h-4 w-full mb-1" />
+            <Skeleton class="h-4 w-1/2 mb-4" />
+            <Skeleton class="h-9 w-24 mx-auto" />
+          </div>
+        </Card>
       </div>
 
       <div v-else>
@@ -90,26 +108,32 @@ function openEditCourseModal(course: any) {
             :key="course.id"
             :to="{ name: 'instructor-course-detail', params: { id: course.id } }"
           >
-            <Card class="hover:bg-accent transition-colors h-full overflow-hidden">
-              <div class="mr-4 ml-4">
+            <Card class="h-full overflow-hidden rounded-lg flex flex-col">
+              <AspectRatio :ratio="16 / 9" class="bg-muted mr-4 ml-4 rounded-lg overflow-hidden">
                 <img
-                  src="https://placehold.co/1080x720?text=Course+Image"
-                  alt="Course Image Placeholder"
-                  class="aspect-video w-full object-cover rounded md:rounded-lg"
+                  :src="getCourseImageUrl(course.cover_image_url)"
+                  :alt="course.title"
+                  class="w-full h-full object-cover transition-transform hover:scale-105"
                 />
+              </AspectRatio>
+              <div class="pr-4 pl-4 flex flex-col flex-1">
+                <CardTitle class="mb-1 text-lg">{{ course.title }}</CardTitle>
+                <CardDescription class="text-sm mb-4 flex-1">
+                  {{ course.description }}
+                </CardDescription>
+
+                <div class="flex justify-center">
+                  <Button
+                    @click="openEditCourseModal(course)"
+                    variant="outline"
+                    size="sm"
+                    class="cursor-pointer"
+                  >
+                    <Pencil class="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                </div>
               </div>
-              <CardHeader>
-                <CardTitle>{{ course.title }}</CardTitle>
-              </CardHeader>
-              <CardContent class="flex-1">
-                <CardDescription>{{ course.description }}</CardDescription>
-              </CardContent>
-              <CardFooter class="flex justify-center">
-                <Button @click="openEditCourseModal(course)" variant="outline" size="sm">
-                  <Pencil class="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-              </CardFooter>
             </Card>
           </RouterLink>
         </div>

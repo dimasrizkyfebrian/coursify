@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { PlusCircle, Pencil, Trash2 } from 'lucide-vue-next'
+import { AspectRatio } from '@/components/ui/aspect-ratio'
+import { PlusCircle, Pencil, Trash2, FolderOpen } from 'lucide-vue-next'
 
 import AddMaterialDialog from '@/components/instructor/my-courses/AddMaterialDialog.vue'
 import EditMaterialDialog from '@/components/instructor/my-courses/EditMaterialDialog.vue'
@@ -105,70 +106,100 @@ function openDeleteMaterialDialog(material: any) {
   selectedMaterial.value = material
   isDeleteDialogOpen.value = true
 }
+
+// Placeholder image URL
+const placeholderImage = '/images/covers/placeholder.webp'
+
+// Get the course image URL
+function getCourseImageUrl(coverUrl: any) {
+  if (coverUrl && coverUrl.Valid && coverUrl.String) {
+    return coverUrl.String
+  }
+  return placeholderImage
+}
 </script>
 
 <template>
   <div>
     <div v-if="isLoading">
-      <Skeleton class="h-8 w-1/2 mb-4" />
-      <Skeleton class="h-24 w-full mb-8" />
-      <Skeleton class="h-40 w-full" />
+      <AspectRatio :ratio="21 / 9" class="bg-muted rounded-lg overflow-hidden mb-6">
+        <Skeleton class="w-full h-full" />
+      </AspectRatio>
+      <div class="max-w-4xl mx-auto px-4">
+        <Skeleton class="h-10 w-3/4 mb-4" />
+        <Skeleton class="h-5 w-full mb-2" />
+        <Skeleton class="h-5 w-2/3 mb-8" />
+        <Skeleton class="h-12 w-full" />
+      </div>
     </div>
 
     <div v-else-if="course">
-      <Card class="mb-6">
-        <img
-          src="https://placehold.co/1080x720?text=Course+Image"
-          alt="Course Image Placeholder"
-          class="aspect-video w-full object-cover rounded md:rounded-t-2xl"
-        />
-        <CardHeader>
-          <CardTitle class="text-3xl">{{ course.title }}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CardDescription>{{ course.description }}</CardDescription>
-        </CardContent>
-      </Card>
+      <div class="mb-6 rounded-lg overflow-hidden shadow-lg">
+        <AspectRatio :ratio="21 / 9" class="bg-muted">
+          <img
+            :src="getCourseImageUrl(course.cover_image_url)"
+            :alt="course.title"
+            class="w-full h-full object-cover"
+          />
+        </AspectRatio>
+      </div>
 
-      <div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-semibold">Course Materials</h2>
-          <Button @click="openAddMaterialModal" size="sm">
-            <PlusCircle class="w-4 h-4 mr-2" />
-            Add Material
-          </Button>
-        </div>
+      <div class="max-w-4xl mx-auto px-4">
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">
+          {{ course.title }}
+        </h1>
+        <p class="text-lg text-muted-foreground mb-10">
+          {{ course.description }}
+        </p>
 
-        <Card v-if="materials.length === 0" class="text-center py-12 border-2 border-dashed">
-          <CardContent>
-            <h3 class="text-lg font-semibold">No Materials Yet</h3>
-            <p class="text-sm text-muted-foreground mt-1">
-              Start building your course by adding the first material.
-            </p>
-          </CardContent>
-        </Card>
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Course Materials</h2>
+            <Button @click="openAddMaterialModal" size="sm">
+              <PlusCircle class="w-4 h-4 mr-2" />
+              Add Material
+            </Button>
+          </div>
 
-        <div v-else class="space-y-4">
-          <Card v-for="material in materials" :key="material.id">
-            <CardContent class="p-4 flex items-center justify-between">
-              <div>
-                <p class="font-semibold">{{ material.title }}</p>
-                <span class="text-xs text-muted-foreground uppercase">{{
-                  material.content_type
-                }}</span>
-              </div>
-
-              <div class="flex gap-2">
-                <Button @click="openEditMaterialModal(material)" variant="outline" size="sm">
-                  <Pencil class="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-                <Button @click="openDeleteMaterialDialog(material)" variant="destructive" size="sm">
-                  <Trash2 class="w-4 h-4" />
-                </Button>
-              </div>
+          <Card v-if="materials.length === 0" class="text-center py-12 border-2 border-dashed">
+            <CardContent>
+              <FolderOpen
+                class="mx-auto h-12 w-12 text-muted-foreground mb-3"
+                :stroke-width="1.5"
+              />
+              <h3 class="text-lg font-semibold">No Materials Yet</h3>
+              <p class="text-sm text-muted-foreground mt-1">
+                Start building your course by adding the first material.
+              </p>
             </CardContent>
           </Card>
+
+          <div v-else class="space-y-4">
+            <Card v-for="material in materials" :key="material.id">
+              <CardContent class="p-4 flex items-center justify-between">
+                <div>
+                  <p class="font-semibold">{{ material.title }}</p>
+                  <span class="text-xs text-muted-foreground uppercase">{{
+                    material.content_type
+                  }}</span>
+                </div>
+
+                <div class="flex gap-2">
+                  <Button @click="openEditMaterialModal(material)" variant="outline" size="sm">
+                    <Pencil class="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    @click="openDeleteMaterialDialog(material)"
+                    variant="destructive"
+                    size="sm"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
