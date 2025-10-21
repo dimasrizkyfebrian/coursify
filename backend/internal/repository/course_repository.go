@@ -17,10 +17,16 @@ func NewCourseRepository(db *sql.DB) *CourseRepository {
 
 // CreateCourse method
 func (r *CourseRepository) CreateCourse(course *model.Course) error {
-    query := `INSERT INTO courses (title, description, instructor_id) 
-               VALUES ($1, $2, $3) RETURNING id, created_at, updated_at`
+    query := `INSERT INTO courses (title, description, instructor_id, cover_image_url) 
+               VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at`
 
-    err := r.DB.QueryRow(query, course.Title, course.Description, course.InstructorID).Scan(&course.ID, &course.CreatedAt, &course.UpdatedAt)
+    err := r.DB.QueryRow(query, 
+        course.Title, 
+        course.Description, 
+        course.InstructorID, 
+        course.CoverImageURL,
+    ).Scan(&course.ID, &course.CreatedAt, &course.UpdatedAt)
+    
     if err != nil {
         log.Printf("Error creating course: %v", err)
         return err
@@ -309,29 +315,6 @@ func (r *CourseRepository) IsStudentEnrolled(studentID, courseID string) (bool, 
         return false, err
     }
     return exists, nil
-}
-
-// UpdateCourseCoverImage method
-func (r *CourseRepository) UpdateCourseCoverImage(courseID, imageURL string) error {
-    query := `UPDATE courses SET cover_image_url = $1, updated_at = NOW() WHERE id = $2`
-
-    // Execute the update query
-    result, err := r.DB.Exec(query, imageURL, courseID)
-    if err != nil {
-        return err
-    }
-
-    // Check if any rows were affected
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        return err
-    }
-
-    if rowsAffected == 0 {
-        return sql.ErrNoRows // Indicates that the course was not found or does not match
-    }
-
-    return nil
 }
 
 // AddFileMaterialToCourse method
