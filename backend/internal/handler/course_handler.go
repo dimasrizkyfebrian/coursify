@@ -28,6 +28,7 @@ func NewCourseHandler(repo *repository.CourseRepository) *CourseHandler {
 type createCourseRequest struct {
 	Title       string `json:"title" example:"Introduction to Go"`
 	Description string `json:"description" example:"A beginner's guide to Golang."`
+    CoverImageURL   string `json:"cover_image_url,omitempty" example:"/images/covers/cover-1.jpg"`
 }
 
 type addMaterialRequest struct {
@@ -63,21 +64,33 @@ func (h *CourseHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-	// Parse the request body into a Course struct
-    var course model.Course
-    if err := json.NewDecoder(r.Body).Decode(&course); err != nil {
+	// Decode JSON body into the simple 'createCourseRequest' struct
+    var req createCourseRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, "Invalid request body", http.StatusBadRequest)
         return
     }
 
-    // Validate the course fields
-    if strings.TrimSpace(course.Title) == "" || strings.TrimSpace(course.Description) == "" {
+    // Validate the input
+    if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Description) == "" {
         http.Error(w, "Title and description cannot be empty", http.StatusBadRequest)
         return
     }
 
-    // Set the instructor ID from the token, not from the request body
-    course.InstructorID = instructorID
+    // Map data from simple request (req) to database model (course)
+    course := model.Course{
+        InstructorID: instructorID,
+        Title:        req.Title,
+        Description:  req.Description,
+    }
+
+    // Convert simple string to sql.NullString manually
+    if req.CoverImageURL != "" {
+        course.CoverImageURL = sql.NullString{String: req.CoverImageURL, Valid: true}
+    } else {
+		// If the frontend sends an empty string, treat it as NULL
+        course.CoverImageURL = sql.NullString{Valid: false}
+    }
 
 	// Create the course in the database
     if err := h.Repo.CreateCourse(&course); err != nil {
