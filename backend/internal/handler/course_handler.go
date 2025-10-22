@@ -235,6 +235,45 @@ func (h *CourseHandler) UpdateCourse(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(map[string]string{"message": "Course updated successfully"})
 }
 
+// @Summary      Delete a course (Instructor only)
+// @Description  Deletes a course owned by the logged-in instructor.
+// @Tags         Instructor
+// @Produce      json
+// @Param        id   path      string  true  "Course ID"
+// @Success      200  {object}  map[string]string "{"message": "Course deleted successfully"}"
+// @Failure      403  {object}  map[string]string "Forbidden: You are not the owner"
+// @Failure      404  {object}  map[string]string "Course not found"
+// @Failure      500  {object}  map[string]string
+// @Router       /instructor/courses/{id} [delete]
+// @Security     BearerAuth
+// DeleteCourse handles request to delete a course
+func (h *CourseHandler) DeleteCourse(w http.ResponseWriter, r *http.Request) {
+    // Get instructor ID from context JWT
+    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+    if !ok {
+        http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
+        return
+    }
+
+    // Get course id from url parameter
+    courseID := chi.URLParam(r, "id")
+
+    // Check if the course exists and belongs to the instructor
+    err := h.Repo.DeleteCourse(courseID, instructorID)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            http.Error(w, "Course not found or you are not the owner", http.StatusNotFound)
+            return
+        }
+        http.Error(w, "Failed to delete course", http.StatusInternalServerError)
+        return
+    }
+
+    // Respond with success message
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Course deleted successfully"})
+}
+
 // @Summary      Add material to a course (Instructor only)
 // @Description  Adds a new learning material to a specific course.
 // @Tags         Instructor - Materials

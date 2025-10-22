@@ -97,6 +97,32 @@ func (r *CourseRepository) UpdateCourse(course *model.Course) error {
     return nil
 }
 
+// DeleteCourse method
+func (r *CourseRepository) DeleteCourse(courseID string, instructorID string) error {
+    // Check if the course exists and belongs to the instructor
+    query := `DELETE FROM courses WHERE id = $1 AND instructor_id = $2`
+
+    // Execute the delete query
+    result, err := r.DB.Exec(query, courseID, instructorID)
+    if err != nil {
+        log.Printf("Error deleting course: %v", err)
+        return err
+    }
+
+    // Check if any rows were affected
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        return err
+    }
+
+    // If no rows were affected, the course was not found or does not belong to the instructor
+    if rowsAffected == 0 {
+        return sql.ErrNoRows
+    }
+
+    return nil
+}
+
 // AddMaterialToCourse method
 func (r *CourseRepository) AddMaterialToCourse(material *model.LearningMaterial) error {
     // Get the last position to determine the position of new material
