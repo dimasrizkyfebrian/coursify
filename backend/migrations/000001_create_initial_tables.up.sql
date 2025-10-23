@@ -47,3 +47,7 @@ CREATE TABLE learning_materials (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- add the avatar_url column to the users table
+ALTER TABLE users
+ADD COLUMN avatar_url TEXT NULL;

@@ -25,11 +25,12 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 	user.PasswordHash = string(hashedPassword)
 
 	query := `INSERT INTO users (full_name, email, password_hash, role)
-	           VALUES ($1, $2, $3, $4)`
+	           VALUES ($1, $2, $3, $4) RETURNING id`
 
-	_, err = r.DB.Exec(query, user.FullName, user.Email, user.PasswordHash, user.Role)
+	err = r.DB.QueryRow(query, user.FullName, user.Email, user.PasswordHash, user.Role).Scan(&user.ID)
+
 	if err != nil {
-		log.Printf("Error creating user: %v", err)
+		log.Printf("Error creating user and getting ID: %v", err) // Updated log message
 		return err
 	}
 
