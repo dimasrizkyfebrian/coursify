@@ -244,7 +244,6 @@ function getCourseImageUrl(coverUrl: any) {
                   <CardContent class="p-4 flex items-center">
                     <div>
                       <p class="font-semibold">{{ course.instructor_name }}</p>
-                      <p class="text-sm text-muted-foreground">{{ course.instructor_email }}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -280,7 +279,6 @@ function getCourseImageUrl(coverUrl: any) {
                   <CardContent class="p-4 flex items-center justify-between">
                     <div>
                       <p class="font-semibold">{{ student.full_name }}</p>
-                      <p class="text-sm text-muted-foreground">{{ student.email }}</p>
                     </div>
                   </CardContent>
                 </Card>
