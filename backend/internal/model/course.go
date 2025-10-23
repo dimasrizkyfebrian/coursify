@@ -8,6 +8,7 @@ import (
 type Course struct {
     ID              string            `json:"id"`
     InstructorID    string            `json:"instructor_id"`
+    InstructorName  string            `json:"instructor_name,omitempty"`
     Title           string            `json:"title"`
     Description     string            `json:"description"`
     CoverImageURL   sql.NullString    `json:"cover_image_url,omitzero"`
