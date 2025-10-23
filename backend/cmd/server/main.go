@@ -108,6 +108,7 @@ func main() {
 	r.Put("/api/instructor/courses/{id}", courseHandler.UpdateCourse)
 	r.Get("/api/instructor/courses/{id}", courseHandler.GetMyCourseDetails)
 	r.Delete("/api/instructor/courses/{id}", courseHandler.DeleteCourse)
+	r.Get("/api/instructor/courses/{id}/enrollments", courseHandler.GetEnrolledStudents)
 	r.Post("/api/instructor/courses/{id}/materials", courseHandler.AddMaterialToCourse)
 	r.Get("/api/instructor/courses/{id}/materials", courseHandler.GetMaterialsByCourseID)
 	r.Put("/api/instructor/courses/{id}/materials/{materialId}", courseHandler.UpdateMaterial)

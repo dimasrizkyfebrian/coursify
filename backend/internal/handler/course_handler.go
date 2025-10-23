@@ -727,3 +727,51 @@ func (h *CourseHandler) UploadPdfMaterial(w http.ResponseWriter, r *http.Request
     w.WriteHeader(http.StatusCreated)
     json.NewEncoder(w).Encode(material)
 }
+
+// @Summary      Get enrolled students for a course (Instructor only)
+// @Description  Retrieves a list of students enrolled in a specific course owned by the instructor.
+// @Tags         Instructor
+// @Produce      json
+// @Param        id   path      string  true  "Course ID"
+// @Success      200  {array}   model.User
+// @Failure      403  {object}  map[string]string "Forbidden: You are not the owner of this course"
+// @Failure      404  {object}  map[string]string "Course not found"
+// @Failure      500  {object}  map[string]string
+// @Router       /instructor/courses/{id}/enrollments [get]
+// @Security     BearerAuth
+// GetEnrolledStudents handles requests to retrieve students enrolled in a course
+func (h *CourseHandler) GetEnrolledStudents(w http.ResponseWriter, r *http.Request) {
+	// Get instructor ID from context JWT
+	instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
+		return
+	}
+
+	// Get course id from url parameter
+	courseID := chi.URLParam(r, "id")
+
+	// Important: Verify Course Ownership
+	// Make sure that the instructor requesting is the owner of this course.
+	existingCourse, err := h.Repo.GetCourseByID(courseID)
+	if err != nil || existingCourse == nil {
+		http.Error(w, "Course not found", http.StatusNotFound)
+		return
+	}
+	if existingCourse.InstructorID != instructorID {
+		http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		return
+	}
+
+	// Call the repository to get the list of students
+	students, err := h.Repo.GetEnrolledStudentsByCourseID(courseID)
+	if err != nil {
+		http.Error(w, "Failed to fetch enrolled students", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with the list of students
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(students)
+}
