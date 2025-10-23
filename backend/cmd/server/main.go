@@ -133,12 +133,6 @@ func main() {
 	r.Get("/api/student/my-courses", courseHandler.GetMyEnrolledCourses)
 	r.Get("/api/student/courses/{id}", courseHandler.GetEnrolledCourseDetails)
 	})
-	
-	// --- Protected General Routes ---
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.AuthMiddleware)
-		r.Get("/api/profile", userHandler.GetProfile)
-	})
 
 	port := ":8080"
 	log.Printf("Server is starting on port %s\n", port)
