@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   AlertDialog,
@@ -18,7 +19,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
-import { PlusCircle, Pencil, Trash2, FolderOpen } from 'lucide-vue-next'
+import { Users, PlusCircle, Pencil, Trash2, FolderOpen } from 'lucide-vue-next'
 
 import AddMaterialDialog from '@/components/instructor/my-courses/AddMaterialDialog.vue'
 import EditMaterialDialog from '@/components/instructor/my-courses/EditMaterialDialog.vue'
@@ -29,43 +30,52 @@ const course = ref<any>(null)
 const materials = ref<any[]>([])
 const isLoading = ref(true)
 
+// Tabs states
+const activeTab = ref('materials')
+const enrolledStudents = ref<any[]>([])
+const isStudentsLoading = ref(false)
+const studentsLoaded = ref(false)
+
+// Modal states
 const isAddModalOpen = ref(false)
 const isEditModalOpen = ref(false)
 const selectedMaterial = ref<any | null>(null)
 const isDeleteDialogOpen = ref(false)
 
-onMounted(async () => {
+// Fetch course details and materials
+async function fetchCourseDetails() {
   const courseId = route.params.id
   try {
-    const [courseResponse, materialsResponse] = await Promise.all([
-      api.get(`/instructor/courses/${courseId}`),
-      api.get(`/instructor/courses/${courseId}/materials`),
-    ])
-
+    const courseResponse = await api.get(`/instructor/courses/${courseId}`)
     course.value = courseResponse.data
-    materials.value = materialsResponse.data || []
   } catch (error) {
-    toast.error('Failed to load course data.')
-  } finally {
-    isLoading.value = false
+    toast.error('Failed to load course details.')
   }
-})
+}
 
-// Fetch course data from the API
-async function fetchCourseData() {
-  const courseId = route.params.id
+// Fetch course materials
+async function fetchCourseMaterials() {
+  if (!course.value?.id) return
   try {
-    isLoading.value = true
-    const [courseResponse, materialsResponse] = await Promise.all([
-      api.get(`/instructor/courses/${courseId}`),
-      api.get(`/instructor/courses/${courseId}/materials`),
-    ])
-    course.value = courseResponse.data
+    const materialsResponse = await api.get(`/instructor/courses/${course.value.id}/materials`)
     materials.value = materialsResponse.data || []
   } catch (error) {
-    toast.error('Failed to load course data.')
+    toast.error('Failed to load course materials.')
+  }
+}
+
+// Fetch enrolled students
+async function fetchEnrolledStudents() {
+  if (!course.value?.id || studentsLoaded.value) return
+  try {
+    isStudentsLoading.value = true
+    const response = await api.get(`/instructor/courses/${course.value.id}/enrollments`)
+    enrolledStudents.value = response.data || []
+    studentsLoaded.value = true
+  } catch (error) {
+    toast.error('Failed to load enrolled students.')
   } finally {
-    isLoading.value = false
+    isStudentsLoading.value = false
   }
 }
 
@@ -77,7 +87,7 @@ async function handleDeleteConfirm() {
       `/instructor/courses/${course.value.id}/materials/${selectedMaterial.value.id}`,
     )
     toast.success('Material deleted successfully.')
-    fetchCourseData() // Refresh the course data
+    fetchCourseMaterials() // Refresh materials
   } catch (error) {
     toast.error('Failed to delete material.')
   } finally {
@@ -85,9 +95,25 @@ async function handleDeleteConfirm() {
   }
 }
 
+// Watch for changes in the active tab
+watch(activeTab, async (newTab) => {
+  if (newTab === 'materials' && materials.value.length === 0) {
+    // If switch to the materials tab and there is no data yet, fetch it
+    await fetchCourseMaterials()
+  } else if (newTab === 'people') {
+    // If switch to the people tab, fetch the student data (if not done before)
+    await fetchEnrolledStudents()
+  }
+})
+
 // Fetch course data when the component mounts
-onMounted(() => {
-  fetchCourseData()
+onMounted(async () => {
+  isLoading.value = true
+  await fetchCourseDetails()
+  if (activeTab.value === 'materials') {
+    await fetchCourseMaterials()
+  }
+  isLoading.value = false
 })
 
 // Open the add material modal
@@ -129,7 +155,8 @@ function getCourseImageUrl(coverUrl: any) {
         <Skeleton class="h-10 w-3/4 mb-4" />
         <Skeleton class="h-5 w-full mb-2" />
         <Skeleton class="h-5 w-2/3 mb-8" />
-        <Skeleton class="h-12 w-full" />
+        <Skeleton class="h-12 w-full mb-4" /> {/* Untuk TabsList */}
+        <Skeleton class="h-20 w-full" /> {/* Untuk TabsContent */}
       </div>
     </div>
 
@@ -152,69 +179,129 @@ function getCourseImageUrl(coverUrl: any) {
           {{ course.description }}
         </p>
 
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold">Course Materials</h2>
-            <Button @click="openAddMaterialModal" size="sm">
-              <PlusCircle class="w-4 h-4 mr-2" />
-              Add Material
-            </Button>
-          </div>
+        <Tabs v-model="activeTab" default-value="materials" class="w-full">
+          <TabsList class="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="materials" class="cursor-pointer">Materials</TabsTrigger>
+            <TabsTrigger value="people" class="cursor-pointer">People</TabsTrigger>
+          </TabsList>
 
-          <Card v-if="materials.length === 0" class="text-center py-12 border-2 border-dashed">
-            <CardContent>
-              <FolderOpen
-                class="mx-auto h-12 w-12 text-muted-foreground mb-3"
-                :stroke-width="1.5"
-              />
-              <h3 class="text-lg font-semibold">No Materials Yet</h3>
-              <p class="text-sm text-muted-foreground mt-1">
-                Start building your course by adding the first material.
-              </p>
-            </CardContent>
-          </Card>
+          <TabsContent value="materials">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold">Course Materials</h2>
+                <Button @click="openAddMaterialModal" size="sm">
+                  <PlusCircle class="w-4 h-4 mr-2" />
+                  Add Material
+                </Button>
+              </div>
 
-          <div v-else class="space-y-4">
-            <Card v-for="material in materials" :key="material.id">
-              <CardContent class="p-4 flex items-center justify-between">
-                <div>
-                  <p class="font-semibold">{{ material.title }}</p>
-                  <span class="text-xs text-muted-foreground uppercase">{{
-                    material.content_type
-                  }}</span>
-                </div>
+              <Card v-if="materials.length === 0" class="text-center py-12 border-2 border-dashed">
+                <CardContent>
+                  <FolderOpen
+                    class="mx-auto h-12 w-12 text-muted-foreground mb-3"
+                    :stroke-width="1.5"
+                  />
+                  <h3 class="text-lg font-semibold">No Materials Yet</h3>
+                  <p class="text-sm text-muted-foreground mt-1">
+                    Start building your course by adding the first material.
+                  </p>
+                </CardContent>
+              </Card>
 
-                <div class="flex gap-2">
-                  <Button @click="openEditMaterialModal(material)" variant="outline" size="sm">
-                    <Pencil class="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                  <Button
-                    @click="openDeleteMaterialDialog(material)"
-                    variant="destructive"
-                    size="sm"
-                  >
-                    <Trash2 class="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              <div v-else class="space-y-4">
+                <Card v-for="material in materials" :key="material.id">
+                  <CardContent class="p-4 flex items-center justify-between">
+                    <div>
+                      <p class="font-semibold">{{ material.title }}</p>
+                      <span class="text-xs text-muted-foreground uppercase">{{
+                        material.content_type
+                      }}</span>
+                    </div>
+                    <div class="flex gap-2">
+                      <Button @click="openEditMaterialModal(material)" variant="outline" size="sm">
+                        <Pencil class="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button
+                        @click="openDeleteMaterialDialog(material)"
+                        variant="destructive"
+                        size="sm"
+                      >
+                        <Trash2 class="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="people">
+            <div>
+              <div class="mb-8">
+                <h2 class="text-xl font-semibold mb-3 pb-2">Instructor</h2>
+                <Card v-if="course.instructor_name">
+                  <CardContent class="p-4 flex items-center">
+                    <div>
+                      <p class="font-semibold">{{ course.instructor_name }}</p>
+                      <p class="text-sm text-muted-foreground">{{ course.instructor_email }}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card v-else>
+                  <CardContent class="p-4">
+                    <p class="font-semibold">Instructor ID:</p>
+                    <p class="text-sm text-muted-foreground">{{ course.instructor_id }}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <h2 class="text-xl font-semibold mb-4">Enrolled Students</h2>
+
+              <div v-if="isStudentsLoading" class="space-y-3">
+                <Skeleton class="h-10 w-full" v-for="i in 3" :key="`skel-${i}`" />
+              </div>
+
+              <Card
+                v-else-if="enrolledStudents.length === 0"
+                class="text-center py-12 border-2 border-dashed"
+              >
+                <CardContent>
+                  <Users class="mx-auto h-12 w-12 text-muted-foreground mb-3" :stroke-width="1.5" />
+                  <h3 class="text-lg font-semibold">No Students Enrolled</h3>
+                  <p class="text-sm text-muted-foreground mt-1">
+                    No students have enrolled in this course yet.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <div v-else class="space-y-3">
+                <Card v-for="student in enrolledStudents" :key="student.id">
+                  <CardContent class="p-4 flex items-center justify-between">
+                    <div>
+                      <p class="font-semibold">{{ student.full_name }}</p>
+                      <p class="text-sm text-muted-foreground">{{ student.email }}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
 
     <AddMaterialDialog
       :is-open="isAddModalOpen"
       :course-id="course?.id || null"
-      :refresh-data="fetchCourseData"
+      :refresh-data="fetchCourseMaterials"
       @update:is-open="isAddModalOpen = $event"
     />
 
     <EditMaterialDialog
       :is-open="isEditModalOpen"
       :material="selectedMaterial"
-      :refresh-data="fetchCourseData"
+      :refresh-data="fetchCourseMaterials"
       @update:is-open="isEditModalOpen = $event"
     />
 
