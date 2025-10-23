@@ -30,7 +30,7 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 	err = r.DB.QueryRow(query, user.FullName, user.Email, user.PasswordHash, user.Role).Scan(&user.ID)
 
 	if err != nil {
-		log.Printf("Error creating user and getting ID: %v", err) // Updated log message
+		log.Printf("Error creating user and getting ID: %v", err)
 		return err
 	}
 
@@ -40,13 +40,18 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 // GetUserByEmail Method
 func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	var user model.User
-	query := `SELECT id, full_name, email, password_hash, role, status FROM users WHERE email = $1`
+	query := `SELECT id, full_name, email, password_hash, role, status, avatar_url 
+	          FROM users WHERE email = $1`
 
-	err := r.DB.QueryRow(query, email).Scan(&user.ID, &user.FullName, &user.Email, &user.PasswordHash, &user.Role, &user.Status)
+	err := r.DB.QueryRow(query, email).Scan(
+		&user.ID, &user.FullName, &user.Email, &user.PasswordHash, &user.Role, &user.Status, 
+		&user.AvatarURL,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+		log.Printf("Error getting user by email: %v", err)
 		return nil, err
 	}
 
@@ -55,10 +60,12 @@ func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 
 // GetUsersByStatus Method
 func (r *UserRepository) GetUsersByStatus(status string) ([]model.User, error) {
-	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users WHERE status = $1 ORDER BY created_at ASC`
+	query := `SELECT id, full_name, email, role, status, created_at, updated_at,
+	          avatar_url FROM users WHERE status = $1 ORDER BY created_at ASC`
 
 	rows, err := r.DB.Query(query, status)
 	if err != nil {
+		log.Printf("Error getting users by status: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -66,10 +73,18 @@ func (r *UserRepository) GetUsersByStatus(status string) ([]model.User, error) {
 	var users []model.User
 	for rows.Next() {
 		var user model.User
-		if err := rows.Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt, 
+			&user.AvatarURL,
+		); err != nil {
+			log.Printf("Error scanning user by status: %v", err)
 			return nil, err
 		}
 		users = append(users, user)
+	}
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating users by status rows: %v", err)
+		return nil, err
 	}
 
 	return users, nil
@@ -97,16 +112,43 @@ func (r *UserRepository) UpdateUserStatus(userID, status string) error {
 	return nil
 }
 
+// UpdateUserAvatarURL Method
+func (r *UserRepository) UpdateUserAvatarURL(userID, avatarURL string) error {
+	query := `UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2`
+
+	result, err := r.DB.Exec(query, avatarURL, userID)
+	if err != nil {
+		log.Printf("Error updating user avatar URL: %v", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
 // GetUserByID Method
 func (r *UserRepository) GetUserByID(userID string) (*model.User, error) {
 	var user model.User
-	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users WHERE id = $1`
+	query := `SELECT id, full_name, email, role, status, created_at, updated_at,
+	          avatar_url FROM users WHERE id = $1`
 
-	err := r.DB.QueryRow(query, userID).Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	err := r.DB.QueryRow(query, userID).Scan(
+		&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt, 
+		&user.AvatarURL,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+		log.Printf("Error getting user by ID: %v", err)
 		return nil, err
 	}
 
@@ -129,10 +171,12 @@ func (r *UserRepository) GetPendingUserCount() (int, error) {
 
 // GetAllUsers Method
 func (r *UserRepository) GetAllUsers() ([]model.User, error) {
-	query := `SELECT id, full_name, email, role, status, created_at, updated_at FROM users ORDER BY created_at ASC`
+	query := `SELECT id, full_name, email, role, status, created_at, updated_at,
+	          avatar_url FROM users ORDER BY created_at ASC`
 
 	rows, err := r.DB.Query(query)
 	if err != nil {
+		log.Printf("Error getting all users: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -140,11 +184,19 @@ func (r *UserRepository) GetAllUsers() ([]model.User, error) {
 	var users []model.User
 	for rows.Next() {
 		var user model.User
-		if err := rows.Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt, 
+			&user.AvatarURL,
+		); err != nil {
+			log.Printf("Error scanning user in GetAllUsers: %v", err)
 			return nil, err
 		}
 		users = append(users, user)
-		}
+	}
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating all users rows: %v", err)
+		return nil, err
+	}
 	return users, nil
 }
 

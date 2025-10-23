@@ -82,6 +82,14 @@ func main() {
 	r.Post("/api/login", userHandler.Login)
 	r.Get("/api/courses", courseHandler.GetAllCoursesPublic)
 
+	// --- Protected Profile Routes ---
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AuthMiddleware)
+
+		r.Get("/api/profile", userHandler.GetProfile)
+		r.Put("/api/profile/avatar", userHandler.UploadAvatar) 
+	})
+
 	// --- Protected Admin Routes ---
 	r.Group(func(r chi.Router) {
 	r.Use(middleware.AuthMiddleware)

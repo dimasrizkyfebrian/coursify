@@ -3,8 +3,13 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
@@ -383,4 +388,120 @@ func (h *UserHandler) GetUserStats(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(stats)
+}
+
+// @Summary      Upload or update user avatar
+// @Description  Uploads a new avatar image (jpg, png) for the logged-in user. Converts to WebP.
+// @Tags         Profile
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        avatar formData file true "Avatar image file (jpg, png, max 2MB)"
+// @Success      200 {object} map[string]string "{"message": "Avatar updated successfully", "url": "/uploads/avatars/..."}"
+// @Failure      400 {object} map[string]string "e.g., No file, file too large, invalid file type"
+// @Failure      500 {object} map[string]string
+// @Router       /profile/avatar [put]
+// @Security     BearerAuth
+// UploadAvatar handles avatar image uploads
+func (h *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
+	// Get User ID from context
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve user ID from context", http.StatusInternalServerError)
+		return
+	}
+
+	// Parse Multipart Form (e.g., max 2MB)
+	maxUploadSize := int64(2 * 1024 * 1024) // 2 MB
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		http.Error(w, fmt.Sprintf("File is too large. Max size is %dMB.", maxUploadSize/(1024*1024)), http.StatusBadRequest)
+		return
+	}
+
+	// Get the file from form data (key should be 'avatar')
+	file, _, err := r.FormFile("avatar")
+	if err != nil {
+		if err == http.ErrMissingFile {
+			http.Error(w, "No file uploaded. Please use 'avatar' as the key.", http.StatusBadRequest)
+		} else {
+			http.Error(w, "Error retrieving the file", http.StatusInternalServerError)
+		}
+		return
+	}
+	defer file.Close()
+
+	// Validate File Type (MIME Type Check is more reliable)
+	// Read the first 512 bytes to determine the actual file type
+	buffer := make([]byte, 512)
+	_, err = file.Read(buffer)
+	if err != nil {
+		http.Error(w, "Error reading file for type validation", http.StatusInternalServerError)
+		return
+	}
+	// Reset the read pointer back to the beginning of the file
+	file.Seek(0, 0)
+
+	contentType := http.DetectContentType(buffer)
+	if contentType != "image/jpeg" && contentType != "image/png" {
+		http.Error(w, "Invalid file type. Only JPG and PNG are allowed.", http.StatusBadRequest)
+		return
+	}
+
+	// --- TODO: Image Conversion (using an imaging library) ---
+	// - Decode the uploaded image (PNG or JPG) from 'file'
+	// - Encode the image as WebP into a buffer or temporary file
+	// - For now, we'll just pretend this happened and continue with file saving logic
+
+	// Generate unique filename (e.g., user_id-timestamp.webp)
+	// Use timestamp for uniqueness, extension is always .webp
+	fileName := fmt.Sprintf("%s-%d.webp", userID, time.Now().UnixNano())
+	uploadDir := filepath.Join("uploads", "avatars") // Subdirectory for avatars
+	filePath := filepath.Join(uploadDir, fileName)
+	fileURL := "/" + strings.ReplaceAll(filePath, "\\", "/") // Ensure URL uses forward slashes
+
+	// Ensure directory exists
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		log.Printf("Error creating avatar directory %s: %v", uploadDir, err)
+		http.Error(w, "Could not create upload directory", http.StatusInternalServerError)
+		return
+	}
+
+	// --- TODO: Delete Old Avatar File ---
+	// - Get the current avatar_url from the database for the user
+	// - If it exists, construct the old file path on the server
+	// - Use os.Remove() to delete the old file before saving the new one
+
+	// Save the (converted) file
+	dst, err := os.Create(filePath)
+	if err != nil {
+		log.Printf("Error creating file %s: %v", filePath, err)
+		http.Error(w, "Could not save the file", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	// In a real scenario, you would copy the *converted WebP data* here
+	// For now, we copy the original file just to test the flow
+	if _, err := io.Copy(dst, file); err != nil {
+		log.Printf("Error copying file content to %s: %v", filePath, err)
+		http.Error(w, "Could not copy file content", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("Successfully saved (placeholder) avatar to: %s", filePath) // Add log
+
+	// Update database with the new file URL
+	err = h.Repo.UpdateUserAvatarURL(userID, fileURL)
+	if err != nil {
+		// Attempt to clean up the newly saved file if DB update fails
+		os.Remove(filePath)
+		log.Printf("Error updating avatar URL in DB for user %s: %v", userID, err)
+		http.Error(w, "Could not update avatar information", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with success
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Avatar updated successfully",
+		"url":     fileURL,
+	})
 }

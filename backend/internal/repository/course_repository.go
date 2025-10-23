@@ -386,40 +386,43 @@ func (r *CourseRepository) AddFileMaterialToCourse(material *model.LearningMater
 // GetEnrolledStudentsByCourseID method
 func (r *CourseRepository) GetEnrolledStudentsByCourseID(courseID string) ([]model.User, error) {
     // Query to get enrolled students
-    query := `
-        SELECT u.id, u.full_name, u.email, u.role, u.status, u.created_at, u.updated_at
-        FROM users u
-        JOIN enrollments e ON u.id = e.user_id
-        WHERE e.course_id = $1 AND u.role = 'student'
-        ORDER BY u.full_name ASC
-    `
-    
-    // Execute the query
-    rows, err := r.DB.Query(query, courseID)
-    if err != nil {
-        log.Printf("Error querying enrolled students: %v", err)
-        return nil, err
-    }
-    defer rows.Close()
+	query := `
+		SELECT u.id, u.full_name, u.email, u.role, u.status, u.created_at, u.updated_at, u.avatar_url 
+		FROM users u
+		JOIN enrollments e ON u.id = e.user_id
+		WHERE e.course_id = $1 AND u.role = 'student'
+		ORDER BY u.full_name ASC
+	`
+	rows, err := r.DB.Query(query, courseID)
+	if err != nil {
+		log.Printf("Error querying enrolled students: %v", err)
+		return nil, err
+	}
+	defer rows.Close() 
 
-    // Process the rows
-    var students []model.User
-    for rows.Next() {
-        var student model.User
-        if err := rows.Scan(
-            &student.ID,
-            &student.FullName,
-            &student.Email,
-            &student.Role,
-            &student.Status,
-            &student.CreatedAt,
-            &student.UpdatedAt,
-        ); err != nil {
-            log.Printf("Error scanning student: %v", err)
-            return nil, err
-        }
-        students = append(students, student)
-    }
-    
-    return students, nil
+    // Store enrolled students
+	var students []model.User
+	for rows.Next() {
+		var student model.User
+		if err := rows.Scan(
+			&student.ID,
+			&student.FullName,
+			&student.Email,
+			&student.Role,
+			&student.Status,
+			&student.CreatedAt,
+			&student.UpdatedAt,
+			&student.AvatarURL,
+		); err != nil {
+			log.Printf("Error scanning enrolled student: %v", err)
+			return nil, err
+		}
+		students = append(students, student)
+	}
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating enrolled students rows: %v", err)
+		return nil, err
+	}
+	
+	return students, nil
 }
