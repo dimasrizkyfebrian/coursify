@@ -43,13 +43,28 @@ type courseWithMaterials struct {
     Materials []model.LearningMaterial `json:"materials"`
 }
 
+type CourseResponseForSwagger struct {
+	ID              string     `json:"id"`
+	InstructorID    string     `json:"instructor_id"`
+	InstructorName  string     `json:"instructor_name,omitempty"`
+	Title           string     `json:"title"`
+	Description     string     `json:"description"`
+	CoverImageURL   *string    `json:"cover_image_url,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+}
+type courseWithMaterialsForSwagger struct {
+	CourseResponseForSwagger
+	Materials []model.LearningMaterial `json:"materials"`
+}
+
 // @Summary      Create a new course (Instructor only)
 // @Description  Creates a new course for the logged-in instructor.
 // @Tags         Instructor
 // @Accept       json
 // @Produce      json
 // @Param        course body createCourseRequest true "Course Information"
-// @Success      201  {object}  model.Course
+// @Success      201  {object}  CourseResponseForSwagger
 // @Failure      400  {object}  map[string]string
 // @Failure      403  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
@@ -108,7 +123,7 @@ func (h *CourseHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
 // @Description  Retrieves a list of all courses created by the logged-in instructor.
 // @Tags         Instructor
 // @Produce      json
-// @Success      200  {array}   model.Course
+// @Success      200  {array}   CourseResponseForSwagger
 // @Failure      403  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /instructor/courses [get]
@@ -140,7 +155,7 @@ func (h *CourseHandler) GetMyCourses(w http.ResponseWriter, r *http.Request) {
 // @Tags         Instructor
 // @Produce      json
 // @Param        id   path      string  true  "Course ID"
-// @Success      200  {object}  model.Course
+// @Success      200  {object}  CourseResponseForSwagger
 // @Failure      403  {object}  map[string]string
 // @Failure      404  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
@@ -485,7 +500,7 @@ func (h *CourseHandler) DeleteMaterial(w http.ResponseWriter, r *http.Request) {
 // @Description  Retrieves a list of all available courses for anyone to see.
 // @Tags         Public
 // @Produce      json
-// @Success      200  {array}   model.Course
+// @Success      200  {array}   CourseResponseForSwagger
 // @Failure      500  {object}  map[string]string
 // @Router       /courses [get]
 // GetAllCoursesPublic handles requests to retrieve public course catalog
@@ -548,7 +563,7 @@ func (h *CourseHandler) EnrollInCourse(w http.ResponseWriter, r *http.Request) {
 // @Description  Retrieves a list of all courses the logged-in student is enrolled in.
 // @Tags         Student
 // @Produce      json
-// @Success      200  {array}   model.Course
+// @Success      200  {array}   CourseResponseForSwagger
 // @Failure      403  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /student/my-courses [get]
@@ -580,7 +595,7 @@ func (h *CourseHandler) GetMyEnrolledCourses(w http.ResponseWriter, r *http.Requ
 // @Tags         Student
 // @Produce      json
 // @Param        id   path      string  true  "Course ID"
-// @Success      200  {object}  handler.courseWithMaterials
+// @Success      200  {object}  courseWithMaterialsForSwagger
 // @Failure      403  {object}  map[string]string "Returned if the student is not enrolled in the course"
 // @Failure      404  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
@@ -733,7 +748,7 @@ func (h *CourseHandler) UploadPdfMaterial(w http.ResponseWriter, r *http.Request
 // @Tags         Instructor
 // @Produce      json
 // @Param        id   path      string  true  "Course ID"
-// @Success      200  {array}   model.User
+// @Success      200  {array}   UserResponseForSwagger
 // @Failure      403  {object}  map[string]string "Forbidden: You are not the owner of this course"
 // @Failure      404  {object}  map[string]string "Course not found"
 // @Failure      500  {object}  map[string]string

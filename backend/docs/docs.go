@@ -45,7 +45,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User"
+                                "$ref": "#/definitions/handler.UserResponseForSwagger"
                             }
                         }
                     },
@@ -91,7 +91,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User"
+                                "$ref": "#/definitions/handler.UserResponseForSwagger"
                             }
                         }
                     },
@@ -227,7 +227,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User"
+                            "$ref": "#/definitions/handler.UserResponseForSwagger"
                         }
                     },
                     "403": {
@@ -290,7 +290,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler.updateUserRequest"
+                            "$ref": "#/definitions/handler.updateUserRequest"
                         }
                     }
                 ],
@@ -549,7 +549,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course"
+                                "$ref": "#/definitions/handler.CourseResponseForSwagger"
                             }
                         }
                     },
@@ -659,7 +659,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course"
+                                "$ref": "#/definitions/handler.CourseResponseForSwagger"
                             }
                         }
                     },
@@ -707,7 +707,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler.createCourseRequest"
+                            "$ref": "#/definitions/handler.createCourseRequest"
                         }
                     }
                 ],
@@ -715,7 +715,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course"
+                            "$ref": "#/definitions/handler.CourseResponseForSwagger"
                         }
                     },
                     "400": {
@@ -776,7 +776,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course"
+                            "$ref": "#/definitions/handler.CourseResponseForSwagger"
                         }
                     },
                     "403": {
@@ -839,7 +839,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler.createCourseRequest"
+                            "$ref": "#/definitions/handler.createCourseRequest"
                         }
                     }
                 ],
@@ -890,6 +890,132 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a course owned by the logged-in instructor.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Instructor"
+                ],
+                "summary": "Delete a course (Instructor only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Course ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{\"message\": \"Course deleted successfully\"}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden: You are not the owner",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Course not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/instructor/courses/{id}/enrollments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a list of students enrolled in a specific course owned by the instructor.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Instructor"
+                ],
+                "summary": "Get enrolled students for a course (Instructor only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Course ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/handler.UserResponseForSwagger"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden: You are not the owner of this course",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Course not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/instructor/courses/{id}/materials": {
@@ -922,7 +1048,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial"
+                                "$ref": "#/definitions/model.LearningMaterial"
                             }
                         }
                     },
@@ -986,7 +1112,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler.addMaterialRequest"
+                            "$ref": "#/definitions/handler.addMaterialRequest"
                         }
                     }
                 ],
@@ -994,7 +1120,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial"
+                            "$ref": "#/definitions/model.LearningMaterial"
                         }
                     },
                     "400": {
@@ -1081,7 +1207,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial"
+                            "$ref": "#/definitions/model.LearningMaterial"
                         }
                     },
                     "400": {
@@ -1162,7 +1288,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler.addMaterialRequest"
+                            "$ref": "#/definitions/handler.addMaterialRequest"
                         }
                     }
                 ],
@@ -1284,89 +1410,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/instructor/courses/{id}/upload-cover": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Uploads a cover image for a specific course owned by the logged-in instructor.",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Instructor"
-                ],
-                "summary": "Upload a cover image for a course (Instructor only)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Course ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Cover Image File (jpg, png, jpeg)",
-                        "name": "cover",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "e.g., No file uploaded, file too large, invalid file type",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/login": {
             "post": {
                 "description": "Authenticates a user and returns a JWT token.",
@@ -1387,7 +1430,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler.loginRequest"
+                            "$ref": "#/definitions/handler.loginRequest"
                         }
                     }
                 ],
@@ -1450,11 +1493,69 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User"
+                            "$ref": "#/definitions/handler.UserResponseForSwagger"
                         }
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/avatar": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uploads a new avatar image (jpg, png) for the logged-in user. Converts to WebP.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Upload or update user avatar",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Avatar image file (jpg, png, max 2MB)",
+                        "name": "avatar",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{\"message\": \"Avatar updated successfully\", \"url\": \"/uploads/avatars/...\"}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "e.g., No file, file too large, invalid file type",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1494,7 +1595,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.User"
+                            "$ref": "#/definitions/model.User"
                         }
                     }
                 ],
@@ -1557,7 +1658,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_handler.courseWithMaterials"
+                            "$ref": "#/definitions/handler.courseWithMaterialsForSwagger"
                         }
                     },
                     "403": {
@@ -1611,7 +1712,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.Course"
+                                "$ref": "#/definitions/handler.CourseResponseForSwagger"
                             }
                         }
                     },
@@ -1638,11 +1739,11 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_dimasrizkyfebrian_coursify_internal_model.Course": {
+        "handler.CourseResponseForSwagger": {
             "type": "object",
             "properties": {
                 "cover_image_url": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "created_at": {
                     "type": "string"
@@ -1656,6 +1757,9 @@ const docTemplate = `{
                 "instructor_id": {
                     "type": "string"
                 },
+                "instructor_name": {
+                    "type": "string"
+                },
                 "title": {
                     "type": "string"
                 },
@@ -1664,7 +1768,145 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial": {
+        "handler.UserResponseForSwagger": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.addMaterialRequest": {
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "type": "string",
+                    "enum": [
+                        "text",
+                        "video",
+                        "pdf"
+                    ]
+                },
+                "text_content": {
+                    "type": "string",
+                    "example": "This is the lesson content."
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Chapter 1: Introduction"
+                },
+                "video_url": {
+                    "type": "string",
+                    "example": "https://youtube.com/watch?v=..."
+                }
+            }
+        },
+        "handler.courseWithMaterialsForSwagger": {
+            "type": "object",
+            "properties": {
+                "cover_image_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instructor_id": {
+                    "type": "string"
+                },
+                "instructor_name": {
+                    "type": "string"
+                },
+                "materials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LearningMaterial"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.createCourseRequest": {
+            "type": "object",
+            "properties": {
+                "cover_image_url": {
+                    "type": "string",
+                    "example": "/images/covers/cover-1.jpg"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "A beginner's guide to Golang."
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Introduction to Go"
+                }
+            }
+        },
+        "handler.loginRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.updateUserRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
+                "full_name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "admin",
+                        "instructor",
+                        "student"
+                    ]
+                }
+            }
+        },
+        "model.LearningMaterial": {
             "type": "object",
             "properties": {
                 "content_type": {
@@ -1700,148 +1942,8 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_dimasrizkyfebrian_coursify_internal_model.User": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "full_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_handler.addMaterialRequest": {
-            "type": "object",
-            "properties": {
-                "content_type": {
-                    "type": "string",
-                    "enum": [
-                        "text",
-                        "video",
-                        "pdf"
-                    ]
-                },
-                "text_content": {
-                    "type": "string",
-                    "example": "This is the lesson content."
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Chapter 1: Introduction"
-                },
-                "video_url": {
-                    "type": "string",
-                    "example": "https://youtube.com/watch?v=..."
-                }
-            }
-        },
-        "internal_handler.courseWithMaterials": {
-            "type": "object",
-            "properties": {
-                "cover_image_url": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "instructor_id": {
-                    "type": "string"
-                },
-                "materials": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_dimasrizkyfebrian_coursify_internal_model.LearningMaterial"
-                    }
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_handler.createCourseRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string",
-                    "example": "A beginner's guide to Golang."
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Introduction to Go"
-                }
-            }
-        },
-        "internal_handler.loginRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_handler.updateUserRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "john.doe@example.com"
-                },
-                "full_name": {
-                    "type": "string",
-                    "example": "John Doe"
-                },
-                "role": {
-                    "type": "string",
-                    "enum": [
-                        "admin",
-                        "instructor",
-                        "student"
-                    ]
-                }
-            }
-        },
-        "sql.NullString": {
-            "type": "object",
-            "properties": {
-                "string": {
-                    "type": "string"
-                },
-                "valid": {
-                    "description": "Valid is true if String is not NULL",
-                    "type": "boolean"
-                }
-            }
+        "model.User": {
+            "type": "object"
         }
     },
     "securityDefinitions": {

@@ -28,6 +28,17 @@ func NewUserHandler(repo *repository.UserRepository) *UserHandler {
 	return &UserHandler{Repo: repo}
 }
 
+type UserResponseForSwagger struct {
+	ID           string    `json:"id"`
+	FullName     string    `json:"full_name"`
+	Email        string    `json:"email"`
+	Role         string    `json:"role"`
+	Status       string    `json:"status"`
+	AvatarURL    *string   `json:"avatar_url,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 // @Summary      Register a new user
 // @Description  Creates a new user account with a 'pending' status.
 // @Tags         Auth
@@ -122,7 +133,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 // @Description  Retrieves the profile information for the currently logged-in user.
 // @Tags         Users
 // @Produce      json
-// @Success      200  {object}  model.User
+// @Success      200  {object}  UserResponseForSwagger
 // @Failure      404  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /profile [get]
@@ -153,7 +164,7 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 // @Description  Retrieves a list of users with 'pending' status.
 // @Tags         Admin
 // @Produce      json
-// @Success      200  {array}  model.User
+// @Success      200  {array}  UserResponseForSwagger
 // @Failure      403  {object}  map[string]string
 // @Router       /admin/users/pending [get]
 // @Security     BearerAuth
@@ -230,7 +241,7 @@ func (h *UserHandler) RejectUser(w http.ResponseWriter, r *http.Request) {
 // @Tags         Admin
 // @Produce      json
 // @Param        id   path      string  true  "User ID"
-// @Success      200  {object}  model.User
+// @Success      200  {object}  UserResponseForSwagger
 // @Failure      403  {object}  map[string]string
 // @Failure      404  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
@@ -279,7 +290,7 @@ func (h *UserHandler) GetPendingUserCount(w http.ResponseWriter, r *http.Request
 // @Description  Retrieves a list of all users regardless of their status.
 // @Tags         Admin
 // @Produce      json
-// @Success      200  {array}   model.User
+// @Success      200  {array}   UserResponseForSwagger
 // @Failure      403  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /admin/users/all [get]
