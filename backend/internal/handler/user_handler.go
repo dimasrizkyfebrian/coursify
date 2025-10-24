@@ -1,9 +1,13 @@
 package handler
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"log"
 	"net/http"
@@ -17,6 +21,8 @@ import (
 	"github.com/dimasrizkyfebrian/coursify/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/kolesa-team/go-webp/encoder"
+	"github.com/kolesa-team/go-webp/webp"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -402,7 +408,7 @@ func (h *UserHandler) GetUserStats(w http.ResponseWriter, r *http.Request) {
 }
 
 // @Summary      Upload or update user avatar
-// @Description  Uploads a new avatar image (jpg, png) for the logged-in user. Converts to WebP.
+// @Description  Uploads a new avatar image (jpg, png, max 2MB) for the logged-in user. Converts to WebP, deletes old avatar.
 // @Tags         Profile
 // @Accept       multipart/form-data
 // @Produce      json
@@ -428,7 +434,7 @@ func (h *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the file from form data (key should be 'avatar')
+	// Get the file from form data
 	file, _, err := r.FormFile("avatar")
 	if err != nil {
 		if err == http.ErrMissingFile {
@@ -440,34 +446,44 @@ func (h *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Validate File Type (MIME Type Check is more reliable)
-	// Read the first 512 bytes to determine the actual file type
-	buffer := make([]byte, 512)
-	_, err = file.Read(buffer)
+	// --- Decode Uploaded Image ---
+	img, format, err := image.Decode(file)
 	if err != nil {
-		http.Error(w, "Error reading file for type validation", http.StatusInternalServerError)
+		log.Printf("Error decoding image for user %s: %v", userID, err)
+		http.Error(w, "Failed to decode image. Ensure it is a valid JPG or PNG.", http.StatusBadRequest)
 		return
 	}
-	// Reset the read pointer back to the beginning of the file
-	file.Seek(0, 0)
+	log.Printf("Decoded image format: %s for user %s", format, userID)
+	if format != "jpeg" && format != "png" {
+		http.Error(w, "Invalid file format after decoding. Only JPG and PNG are allowed.", http.StatusBadRequest)
+		return
+	}
+	// --- End Image Decoding ---
 
-	contentType := http.DetectContentType(buffer)
-	if contentType != "image/jpeg" && contentType != "image/png" {
-		http.Error(w, "Invalid file type. Only JPG and PNG are allowed.", http.StatusBadRequest)
+	// --- Encode Image as WebP using kolesa-team/go-webp ---
+	options, err := encoder.NewLossyEncoderOptions(encoder.PresetDefault, 80)
+	if err != nil {
+		log.Printf("Error creating webp encoder options: %v", err)
+		http.Error(w, "Failed to configure image conversion", http.StatusInternalServerError)
 		return
 	}
 
-	// --- TODO: Image Conversion (using an imaging library) ---
-	// - Decode the uploaded image (PNG or JPG) from 'file'
-	// - Encode the image as WebP into a buffer or temporary file
-	// - For now, we'll just pretend this happened and continue with file saving logic
+	// Create a buffer to store the encoding results
+	var webpBuffer bytes.Buffer
 
-	// Generate unique filename (e.g., user_id-timestamp.webp)
-	// Use timestamp for uniqueness, extension is always .webp
+	// Perform encoding from 'img' to 'webpBuffer' with the specified options
+	if err := webp.Encode(&webpBuffer, img, options); err != nil {
+		log.Printf("Error encoding image to WebP for user %s: %v", userID, err)
+		http.Error(w, "Failed to convert image to WebP", http.StatusInternalServerError)
+		return
+	}
+	// --- End WebP Encoding ---
+
+	// Generate unique filename and paths
 	fileName := fmt.Sprintf("%s-%d.webp", userID, time.Now().UnixNano())
-	uploadDir := filepath.Join("uploads", "avatars") // Subdirectory for avatars
+	uploadDir := filepath.Join("uploads", "avatars")
 	filePath := filepath.Join(uploadDir, fileName)
-	fileURL := "/" + strings.ReplaceAll(filePath, "\\", "/") // Ensure URL uses forward slashes
+	fileURL := "/" + strings.ReplaceAll(filePath, "\\", "/") // URL path for DB
 
 	// Ensure directory exists
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
@@ -476,12 +492,24 @@ func (h *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// --- TODO: Delete Old Avatar File ---
-	// - Get the current avatar_url from the database for the user
-	// - If it exists, construct the old file path on the server
-	// - Use os.Remove() to delete the old file before saving the new one
+	// --- Delete Old Avatar File ---
+	currentUser, err := h.Repo.GetUserByID(userID)
+	if err != nil || currentUser == nil {
+		log.Printf("Warning: Error fetching user %s to delete old avatar: %v", userID, err)
+	} else if currentUser.AvatarURL.Valid && currentUser.AvatarURL.String != "" {
+		oldFilePath := filepath.Join(".", strings.TrimPrefix(currentUser.AvatarURL.String, "/"))
+		oldFilePath = filepath.FromSlash(oldFilePath)
+		errRemove := os.Remove(oldFilePath)
+		if errRemove != nil && !os.IsNotExist(errRemove) {
+			log.Printf("Warning: Failed to delete old avatar file %s for user %s: %v", oldFilePath, userID, errRemove)
+		} else if errRemove == nil {
+			log.Printf("Successfully deleted old avatar file %s for user %s", oldFilePath, userID)
+		}
+	}
+	// --- End Delete Old Avatar ---
 
-	// Save the (converted) file
+	// --- Save the NEW WebP file ---
+	// Create the file
 	dst, err := os.Create(filePath)
 	if err != nil {
 		log.Printf("Error creating file %s: %v", filePath, err)
@@ -490,20 +518,20 @@ func (h *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 	defer dst.Close()
 
-	// In a real scenario, you would copy the *converted WebP data* here
-	// For now, we copy the original file just to test the flow
-	if _, err := io.Copy(dst, file); err != nil {
-		log.Printf("Error copying file content to %s: %v", filePath, err)
-		http.Error(w, "Could not copy file content", http.StatusInternalServerError)
+	// Copy WebP data from buffer to file
+	if _, err := io.Copy(dst, &webpBuffer); err != nil {
+		log.Printf("Error writing WebP data to file %s: %v", filePath, err)
+		http.Error(w, "Could not write WebP file", http.StatusInternalServerError)
+		os.Remove(filePath) // Cleanup file if copying fails
 		return
 	}
-	log.Printf("Successfully saved (placeholder) avatar to: %s", filePath) // Add log
+	log.Printf("Successfully saved NEW WebP avatar to: %s", filePath)
+	// --- End Save New File ---
 
 	// Update database with the new file URL
 	err = h.Repo.UpdateUserAvatarURL(userID, fileURL)
 	if err != nil {
-		// Attempt to clean up the newly saved file if DB update fails
-		os.Remove(filePath)
+		os.Remove(filePath) // Clean up file if DB update fails
 		log.Printf("Error updating avatar URL in DB for user %s: %v", userID, err)
 		http.Error(w, "Could not update avatar information", http.StatusInternalServerError)
 		return
