@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -143,6 +144,55 @@ function getCourseImageUrl(coverUrl: any) {
   }
   return placeholderImage
 }
+
+// Default avatar image URL
+const defaultAvatar = '/images/avatars/default.webp'
+
+// Get the user's avatar URL
+function getUserAvatarUrl(avatarData: any) {
+  if (avatarData && avatarData.Valid && avatarData.String) {
+    // Construct the absolute URL using the backend base address
+    const backendBaseUrl =
+      import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8080' // Fallback added
+
+    // Ensure avatarData.String starts with a slash
+    const imagePath = avatarData.String.startsWith('/')
+      ? avatarData.String
+      : '/' + avatarData.String
+    return `${backendBaseUrl}${imagePath}`
+  }
+  return defaultAvatar
+}
+
+// Get initials for a name
+function getInitials(name: string): string {
+  // Handle empty or null names early
+  if (!name || name.trim().length === 0) {
+    return '?'
+  }
+
+  // Split name into parts
+  const names = name.trim().split(' ')
+
+  // Get the first initial safely
+  const firstInitial = names[0]?.charAt(0)?.toUpperCase()
+
+  // If only one name part, return the first initial (if it exists)
+  if (names.length === 1) {
+    return firstInitial || '?' // Return '?' if firstInitial ended up undefined
+  }
+
+  // If multiple name parts, get the last initial safely
+  const lastInitial = names[names.length - 1]?.charAt(0)?.toUpperCase()
+
+  // Combine first and last (if they exist)
+  if (firstInitial && lastInitial) {
+    return firstInitial + lastInitial
+  }
+
+  // Fallback if only first initial exists or something else failed
+  return firstInitial || '?'
+}
 </script>
 
 <template>
@@ -155,8 +205,8 @@ function getCourseImageUrl(coverUrl: any) {
         <Skeleton class="h-10 w-3/4 mb-4" />
         <Skeleton class="h-5 w-full mb-2" />
         <Skeleton class="h-5 w-2/3 mb-8" />
-        <Skeleton class="h-12 w-full mb-4" /> {/* Untuk TabsList */}
-        <Skeleton class="h-20 w-full" /> {/* Untuk TabsContent */}
+        <Skeleton class="h-12 w-full mb-4" />
+        <Skeleton class="h-20 w-full" />
       </div>
     </div>
 
@@ -241,7 +291,14 @@ function getCourseImageUrl(coverUrl: any) {
               <div class="mb-8">
                 <h2 class="text-xl font-semibold mb-3 pb-2">Instructor</h2>
                 <Card v-if="course.instructor_name">
-                  <CardContent class="p-4 flex items-center">
+                  <CardContent class="p-4 flex items-center gap-3">
+                    <Avatar class="h-10 w-10">
+                      <AvatarImage
+                        :src="getUserAvatarUrl(course.avatar_url)"
+                        :alt="course.instructor_name"
+                      />
+                      <AvatarFallback>{{ getInitials(course.instructor_name) }}</AvatarFallback>
+                    </Avatar>
                     <div>
                       <p class="font-semibold">{{ course.instructor_name }}</p>
                     </div>
@@ -277,8 +334,17 @@ function getCourseImageUrl(coverUrl: any) {
               <div v-else class="space-y-3">
                 <Card v-for="student in enrolledStudents" :key="student.id">
                   <CardContent class="p-4 flex items-center justify-between">
-                    <div>
-                      <p class="font-semibold">{{ student.full_name }}</p>
+                    <div class="flex items-center gap-3">
+                      <Avatar class="h-9 w-9">
+                        <AvatarImage
+                          :src="getUserAvatarUrl(student.avatar_url)"
+                          :alt="student.full_name"
+                        />
+                        <AvatarFallback>{{ getInitials(student.full_name) }}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p class="font-semibold">{{ student.full_name }}</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
