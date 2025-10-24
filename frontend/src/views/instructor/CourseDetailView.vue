@@ -290,26 +290,19 @@ function getInitials(name: string): string {
             <div>
               <div class="mb-8">
                 <h2 class="text-xl font-semibold mb-3 pb-2">Instructor</h2>
-                <Card v-if="course.instructor_name">
-                  <CardContent class="p-4 flex items-center gap-3">
-                    <Avatar class="h-10 w-10">
-                      <AvatarImage
-                        :src="getUserAvatarUrl(course.avatar_url)"
-                        :alt="course.instructor_name"
-                      />
-                      <AvatarFallback>{{ getInitials(course.instructor_name) }}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p class="font-semibold">{{ course.instructor_name }}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card v-else>
-                  <CardContent class="p-4">
-                    <p class="font-semibold">Instructor ID:</p>
-                    <p class="text-sm text-muted-foreground">{{ course.instructor_id }}</p>
-                  </CardContent>
-                </Card>
+                <div class="flex items-center gap-3 p-3 border rounded-md mb-3">
+                  <Avatar class="h-10 w-10">
+                    <AvatarImage
+                      :src="getUserAvatarUrl(course.instructor_avatar_url)"
+                      :alt="course.instructor_name"
+                    />
+                    <AvatarFallback>{{ getInitials(course.instructor_name) }}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p class="font-semibold">{{ course.instructor_name }}</p>
+                    <!-- <p class="text-sm text-muted-foreground">{{ course.instructor_email }}</p> -->
+                  </div>
+                </div>
               </div>
 
               <h2 class="text-xl font-semibold mb-4">Enrolled Students</h2>
@@ -331,9 +324,14 @@ function getInitials(name: string): string {
                 </CardContent>
               </Card>
 
-              <div v-else class="space-y-3">
-                <Card v-for="student in enrolledStudents" :key="student.id">
-                  <CardContent class="p-4 flex items-center justify-between">
+              <div v-else>
+                <div class="border rounded-md">
+                  <div
+                    v-for="(student, index) in enrolledStudents"
+                    :key="student.id"
+                    class="flex items-center justify-between gap-3 p-3"
+                    :class="{ 'border-t': index > 0 }"
+                  >
                     <div class="flex items-center gap-3">
                       <Avatar class="h-9 w-9">
                         <AvatarImage
@@ -343,11 +341,12 @@ function getInitials(name: string): string {
                         <AvatarFallback>{{ getInitials(student.full_name) }}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p class="font-semibold">{{ student.full_name }}</p>
+                        <p class="font-medium">{{ student.full_name }}</p>
+                        <!-- <p class="text-sm text-muted-foreground">{{ student.email }}</p> -->
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
             </div>
           </TabsContent>
