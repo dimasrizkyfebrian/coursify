@@ -71,21 +71,23 @@ func (r *CourseRepository) GetCourseByID(courseID string) (*model.Course, error)
     var course model.Course
     query := `
         SELECT 
-            c.id, c.instructor_id, u.full_name AS instructor_name, 
-            c.title, c.description, c.cover_image_url, c.created_at, c.updated_at
+            c.id, c.instructor_id, u.full_name AS instructor_name,
+            u.avatar_url AS instructor_avatar_url, c.title, c.description,
+            c.cover_image_url, c.created_at, c.updated_at
         FROM courses c 
         JOIN users u ON c.instructor_id = u.id 
         WHERE c.id = $1
     `
 
     err := r.DB.QueryRow(query, courseID).Scan(
-        &course.ID, &course.InstructorID, &course.InstructorName, &course.Title, &course.Description,
-        &course.CoverImageURL, &course.CreatedAt, &course.UpdatedAt,
+        &course.ID, &course.InstructorID, &course.InstructorName, &course.InstructorAvatarURL,
+        &course.Title, &course.Description, &course.CoverImageURL, &course.CreatedAt, &course.UpdatedAt,
     )
     if err != nil {
         if err == sql.ErrNoRows {
             return nil, nil
         }
+        log.Printf("Error getting course by ID with instructor details: %v", err)
         return nil, err
     }
     return &course, nil
