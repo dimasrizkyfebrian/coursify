@@ -56,6 +56,13 @@ Coursify is a full-stack web application serving as a **Learning Management Syst
   - Docker
   - Docker Compose
 
+## ⚠️ Current Status & Known Limitations
+
+Please note that Coursify is currently under **active development**. As such, you may encounter bugs or incomplete features.
+
+- **Storage**: File uploads (avatars, course materials) are currently stored on the **local filesystem** within the `backend/uploads` directory. Cloud storage integration (like AWS S3 or Google Cloud Storage) is planned for future development.
+- **Testing**: While core functionalities are tested, comprehensive test coverage is still in progress.
+
 ## 🚀 Running the Project Locally (Using Docker)
 
 Ensure you have **Docker Desktop** installed.
