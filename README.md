@@ -97,39 +97,39 @@ Ensure you have **Docker Desktop** installed.
       docker-compose up -d --build
       ```
 
-````
-
 4.  **Run Database Migrations**:
 
-  - Open a new terminal or use the same one.
-  - Navigate to the `backend/` directory:
-  - ```powershell
-    cd backend
-    ```
-  - Run the migrations using `golang-migrate/migrate`. Replace `YOUR_PASSWORD` and `YOUR_DB_NAME` according to your `.env`:
-  - ```powershell
-    # Using PowerShell
-    migrate -database "postgres://postgres:YOUR_PASSWORD@localhost:5433/YOUR_DB_NAME?sslmode=disable" -path ./migrations up
+- Open a new terminal or use the same one.
+- Navigate to the `backend/` directory:
+- ```powershell
+  cd backend
+  ```
+- Run the migrations using `golang-migrate/migrate`. Replace `YOUR_PASSWORD` and `YOUR_DB_NAME` according to your `.env`:
+- ```powershell
+  # Using PowerShell
+  migrate -database "postgres://postgres:YOUR_PASSWORD@localhost:5433/YOUR_DB_NAME?sslmode=disable" -path ./migrations up
 
-    # Or using Bash/Cmd
-    # export DB_URL="postgres://postgres:YOUR_PASSWORD@localhost:5433/YOUR_DB_NAME?sslmode=disable"
-    # migrate -database ${DB_URL} -path ./migrations up
-    ```
+  # Or using Bash/Cmd
+  # export DB_URL="postgres://postgres:YOUR_PASSWORD@localhost:5433/YOUR_DB_NAME?sslmode=disable"
+  # migrate -database ${DB_URL} -path ./migrations up
+  ```
 
-  - _(Note: The migration command might differ based on your `golang-migrate/migrate` setup)_
+- _(Note: The migration command might differ based on your `golang-migrate/migrate` setup)_
 
 5.  **Run Seeder (Optional but Recommended)**:
 
-  - Still inside the `backend/` directory, run the seeder script:
-  - ```powershell
+- Still inside the `backend/` directory, run the seeder script:
+- ```powershell
   go run ./cmd/seeder/main.go
   ```
 
-  - This will create default users (admin, instructor, student) and some random data.
+```
+
+- This will create default users (admin, instructor, student) and some random data.
 
 6.  **Access the Application**:
-  - **Frontend**: Open your browser and navigate to `http://localhost:5173` (as per `docker-compose.yml` port mapping).
-  - **Backend API**: Available at `http://localhost:8080`.
-  - **API Documentation (Swagger)**: Access `http://localhost:8080/swagger/index.html`.
-  - **Database**: Can be accessed using tools like TablePlus/DBeaver at `localhost:5433`.
-````
+- **Frontend**: Open your browser and navigate to `http://localhost:5173` (as per `docker-compose.yml` port mapping).
+- **Backend API**: Available at `http://localhost:8080`.
+- **API Documentation (Swagger)**: Access `http://localhost:8080/swagger/index.html`.
+- **Database**: Can be accessed using tools like TablePlus/DBeaver at `localhost:5433`.
+```
