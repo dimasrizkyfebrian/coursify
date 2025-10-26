@@ -23,6 +23,36 @@ const { isMobile } = useSidebar()
 const { user, logoutUser } = useUserStore()
 const router = useRouter()
 
+// Default avatar URL
+const defaultAvatar = '/images/avatars/default.webp'
+
+// Helper to get avatar URL or fallback
+function getUserAvatarUrl(avatarPath: string | null) {
+  if (avatarPath) {
+    const backendBaseUrl =
+      import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8080'
+    return `${backendBaseUrl}${avatarPath}`
+  }
+  return defaultAvatar
+}
+
+// Helper to get initials
+function getInitials(name: string): string {
+  if (!name || name.trim().length === 0) {
+    return '?'
+  }
+  const names = name.trim().split(' ')
+  const firstInitial = names[0]?.charAt(0)?.toUpperCase()
+  if (names.length === 1) {
+    return firstInitial || '?'
+  }
+  const lastInitial = names[names.length - 1]?.charAt(0)?.toUpperCase()
+  if (firstInitial && lastInitial) {
+    return firstInitial + lastInitial
+  }
+  return firstInitial || '?'
+}
+
 function handleLogout() {
   logoutUser()
   router.push('/login')
@@ -39,9 +69,9 @@ function handleLogout() {
             class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
           >
             <Avatar class="h-8 w-8 rounded-lg">
-              <AvatarImage src="" alt="" />
+              <AvatarImage :src="getUserAvatarUrl(user.avatarUrl)" :alt="user.fullName" />
               <AvatarFallback class="rounded-lg">
-                {{ user.fullName?.charAt(0).toUpperCase() }}
+                {{ getInitials(user.fullName) }}
               </AvatarFallback>
             </Avatar>
             <div class="grid flex-1 text-left text-sm leading-tight">
@@ -60,9 +90,9 @@ function handleLogout() {
           <DropdownMenuLabel class="p-0 font-normal">
             <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar class="h-8 w-8 rounded-lg">
-                <AvatarImage src="" alt="" />
+                <AvatarImage :src="getUserAvatarUrl(user.avatarUrl)" :alt="user.fullName" />
                 <AvatarFallback class="rounded-lg">
-                  {{ user.fullName?.charAt(0).toUpperCase() }}
+                  {{ getInitials(user.fullName) }}
                 </AvatarFallback>
               </Avatar>
               <div class="grid flex-1 text-left text-sm leading-tight">

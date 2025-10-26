@@ -16,6 +16,7 @@ const user = ref({
   fullName: '' as string,
   email: '' as string,
   role: null as string | null,
+  avatarUrl: null as string | null,
   isLoggedIn: false,
 })
 
@@ -40,6 +41,11 @@ async function fetchUserProfile() {
     const response = await api.get('/profile')
     user.value.fullName = response.data.full_name
     user.value.email = response.data.email
+    if (response.data.avatar_url && response.data.avatar_url.Valid) {
+      user.value.avatarUrl = response.data.avatar_url.String
+    } else {
+      user.value.avatarUrl = null
+    }
     fetchPendingUserCount()
   } catch (error) {
     console.error('Error fetching user profile:', error)
@@ -73,7 +79,10 @@ function checkUserStatus() {
 function logoutUser() {
   localStorage.removeItem('authToken')
   user.value.id = null
+  user.value.fullName = ''
+  user.value.email = ''
   user.value.role = null
+  user.value.avatarUrl = null
   user.value.isLoggedIn = false
 }
 
