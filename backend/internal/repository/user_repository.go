@@ -1,0 +1,271 @@
+package repository
+
+import (
+	"database/sql"
+	"log"
+
+	"github.com/dimasrizkyfebrian/coursify/internal/model"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type UserRepository struct {
+	DB *sql.DB
+}
+
+func NewUserRepository(db *sql.DB) *UserRepository {
+	return &UserRepository{DB: db}
+}
+
+// CreateUser Method
+func (r *UserRepository) CreateUser(user *model.User) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	user.PasswordHash = string(hashedPassword)
+
+	query := `INSERT INTO users (full_name, email, password_hash, role)
+	           VALUES ($1, $2, $3, $4) RETURNING id`
+
+	err = r.DB.QueryRow(query, user.FullName, user.Email, user.PasswordHash, user.Role).Scan(&user.ID)
+
+	if err != nil {
+		log.Printf("Error creating user and getting ID: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// GetUserByEmail Method
+func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
+	var user model.User
+	query := `SELECT id, full_name, email, password_hash, role, status, avatar_url 
+	          FROM users WHERE email = $1`
+
+	err := r.DB.QueryRow(query, email).Scan(
+		&user.ID, &user.FullName, &user.Email, &user.PasswordHash, &user.Role, &user.Status, 
+		&user.AvatarURL,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		log.Printf("Error getting user by email: %v", err)
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+// GetUsersByStatus Method
+func (r *UserRepository) GetUsersByStatus(status string) ([]model.User, error) {
+	query := `SELECT id, full_name, email, role, status, created_at, updated_at,
+	          avatar_url FROM users WHERE status = $1 ORDER BY created_at ASC`
+
+	rows, err := r.DB.Query(query, status)
+	if err != nil {
+		log.Printf("Error getting users by status: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []model.User
+	for rows.Next() {
+		var user model.User
+		if err := rows.Scan(
+			&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt, 
+			&user.AvatarURL,
+		); err != nil {
+			log.Printf("Error scanning user by status: %v", err)
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating users by status rows: %v", err)
+		return nil, err
+	}
+
+	return users, nil
+}
+
+// UpdateUserStatus Method
+func (r *UserRepository) UpdateUserStatus(userID, status string) error {
+	query := `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`
+
+	result, err := r.DB.Exec(query, status, userID)
+	if err != nil {
+		log.Printf("Error updating user status: %v", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+// UpdateUserAvatarURL Method
+func (r *UserRepository) UpdateUserAvatarURL(userID, avatarURL string) error {
+	query := `UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2`
+
+	result, err := r.DB.Exec(query, avatarURL, userID)
+	if err != nil {
+		log.Printf("Error updating user avatar URL: %v", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+// GetUserByID Method
+func (r *UserRepository) GetUserByID(userID string) (*model.User, error) {
+	var user model.User
+	query := `SELECT id, full_name, email, role, status, created_at, updated_at,
+	          avatar_url FROM users WHERE id = $1`
+
+	err := r.DB.QueryRow(query, userID).Scan(
+		&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt, 
+		&user.AvatarURL,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		log.Printf("Error getting user by ID: %v", err)
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+// GetPendingUserCount Method
+func (r *UserRepository) GetPendingUserCount() (int, error) {
+    var count int
+    query := `SELECT COUNT(*) FROM users WHERE status = 'pending'`
+
+    err := r.DB.QueryRow(query).Scan(&count)
+    if err != nil {
+        log.Printf("Error counting pending users: %v", err)
+        return 0, err
+    }
+
+    return count, nil
+}
+
+// GetAllUsers Method
+func (r *UserRepository) GetAllUsers() ([]model.User, error) {
+	query := `SELECT id, full_name, email, role, status, created_at, updated_at,
+	          avatar_url FROM users ORDER BY created_at ASC`
+
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		log.Printf("Error getting all users: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []model.User
+	for rows.Next() {
+		var user model.User
+		if err := rows.Scan(
+			&user.ID, &user.FullName, &user.Email, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt, 
+			&user.AvatarURL,
+		); err != nil {
+			log.Printf("Error scanning user in GetAllUsers: %v", err)
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating all users rows: %v", err)
+		return nil, err
+	}
+	return users, nil
+}
+
+// UpdateUser Method
+func (r *UserRepository) UpdateUser(user *model.User) error {
+	query := `UPDATE users SET full_name = $1, email = $2, role = $3, updated_at = NOW() WHERE id = $4`
+
+	result, err := r.DB.Exec(query, user.FullName, user.Email, user.Role, user.ID)
+	if err != nil {
+		log.Printf("Error updating user: %v", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+// DeleteUser Method
+func (r *UserRepository) DeleteUser(userID string) error {
+	query := `DELETE FROM users WHERE id = $1`
+
+	result, err := r.DB.Exec(query, userID)
+	if err != nil {
+		log.Printf("Error deleting user: %v", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+// GetUserStats method
+func (r *UserRepository) GetUserStats() (map[string]int, error) {
+	stats := make(map[string]int)
+
+	query := `
+		SELECT
+			COUNT(*) AS total_users,
+			COUNT(*) FILTER (WHERE status = 'active') AS active_users,
+			COUNT(*) FILTER (WHERE status = 'pending') AS pending_users
+		FROM users
+	`
+
+	var total, active, pending int
+	err := r.DB.QueryRow(query).Scan(&total, &active, &pending)
+	if err != nil {
+		log.Printf("Error getting user stats: %v", err)
+		return nil, err
+	}
+
+	stats["total_users"] = total
+	stats["active_users"] = active
+	stats["pending_users"] = pending
+
+	return stats, nil
+}
