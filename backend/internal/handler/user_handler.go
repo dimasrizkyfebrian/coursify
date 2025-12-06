@@ -65,10 +65,10 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        credentials body dto.LoginRequest true "User credentials"
-// @Success      200  {object}  map[string]string "{"token": "JWT_TOKEN"}"
-// @Failure      401  {object}  map[string]string
-// @Failure      403  {object}  map[string]string
-// @Failure      500  {object}  map[string]string
+// @Success      200  {object}  map[string]interface{} "{"status": "success", "message": "Login successful", "data": {"token": "JWT_TOKEN"}}"
+// @Failure      401  {object}  map[string]interface{} "{"status": "error", "message": "Invalid email or password"}"
+// @Failure      403  {object}  map[string]interface{} "{"status": "error", "message": "Account is not active, please wait for admin approval"}"
+// @Failure      500  {object}  map[string]interface{} "{"status": "error", "message": "Internal server error"}"
 // @Router       /login [post]
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var credentials dto.LoginRequest
@@ -90,8 +90,17 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response := map[string]interface{}{
+		"status":  "success",
+		"message": "Login successful",
+		"data": map[string]string{
+			"token": token,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Get user profile
