@@ -16,33 +16,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dimasrizkyfebrian/coursify/internal/dto"
 	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
 	"github.com/dimasrizkyfebrian/coursify/internal/model"
-	"github.com/dimasrizkyfebrian/coursify/internal/repository"
+	"github.com/dimasrizkyfebrian/coursify/internal/service"
 	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/kolesa-team/go-webp/encoder"
 	"github.com/kolesa-team/go-webp/webp"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type UserHandler struct {
-	Repo *repository.UserRepository
+	Service *service.UserService
 }
 
-func NewUserHandler(repo *repository.UserRepository) *UserHandler {
-	return &UserHandler{Repo: repo}
-}
-
-type UserResponseForSwagger struct {
-	ID           string    `json:"id"`
-	FullName     string    `json:"full_name"`
-	Email        string    `json:"email"`
-	Role         string    `json:"role"`
-	Status       string    `json:"status"`
-	AvatarURL    *string   `json:"avatar_url,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+func NewUserHandler(service *service.UserService) *UserHandler {
+	return &UserHandler{Service: service}
 }
 
 // @Summary      Register a new user
@@ -62,7 +50,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Repo.CreateUser(&user); err != nil {
+	if err := h.Service.Register(&user); err != nil {
 		http.Error(w, "Could not create user", http.StatusInternalServerError)
 		return
 	}
@@ -71,75 +59,46 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully, waiting for admin approval"})
 }
 
-type loginRequest struct {
-    Email    string `json:"email"`
-    Password string `json:"password"`
-}
-
 // @Summary      Log in a user
 // @Description  Authenticates a user and returns a JWT token.
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        credentials body loginRequest true "User credentials"
+// @Param        credentials body dto.LoginRequest true "User credentials"
 // @Success      200  {object}  map[string]string "{"token": "JWT_TOKEN"}"
 // @Failure      401  {object}  map[string]string
 // @Failure      403  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /login [post]
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var credentials struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var credentials dto.LoginRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.Repo.GetUserByEmail(credentials.Email)
+	token, err := h.Service.Login(credentials.Email, credentials.Password)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	if user == nil {
-		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(credentials.Password)); err != nil {
-		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
-		return
-	}
-
-	if user.Status != "active" {
-		http.Error(w, "Account is not active, please wait for admin approval", http.StatusForbidden)
-		return
-	}
-
-	claims := jwt.MapClaims{
-		"user_id": user.ID,
-		"role":    user.Role,
-		"exp":     time.Now().Add(time.Hour * 72).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET_KEY")))
-	if err != nil {
-		http.Error(w, "Could not generate token", http.StatusInternalServerError)
+		if err.Error() == "invalid email or password" {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+		} else if err.Error() == "account is not active" {
+			http.Error(w, "Account is not active, please wait for admin approval", http.StatusForbidden)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+	json.NewEncoder(w).Encode(map[string]string{"token": token})
 }
 
 // @Summary      Get user profile
 // @Description  Retrieves the profile information for the currently logged-in user.
 // @Tags         Users
 // @Produce      json
-// @Success      200  {object}  UserResponseForSwagger
+// @Success      200  {object}  dto.UserResponse
 // @Failure      404  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /profile [get]
@@ -151,7 +110,7 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Repo.GetUserByID(userID)
+	user, err := h.Service.GetUserByID(userID)
 	if err != nil {
 		http.Error(w, "Could not fetch user profile", http.StatusInternalServerError)
 		return
@@ -161,29 +120,33 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response := h.Service.MapUserToResponse(user)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Get pending users (Admin only)
 // @Description  Retrieves a list of users with 'pending' status.
 // @Tags         Admin
 // @Produce      json
-// @Success      200  {array}  UserResponseForSwagger
+// @Success      200  {array}  dto.UserResponse
 // @Failure      403  {object}  map[string]string
 // @Router       /admin/users/pending [get]
 // @Security     BearerAuth
 func (h *UserHandler) GetPendingUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.Repo.GetUsersByStatus("pending")
+	users, err := h.Service.GetPendingUsers()
 	if err != nil {
 		http.Error(w, "Could not fetch users", http.StatusInternalServerError)
 		return
 	}
 
+	response := h.Service.MapUsersToResponse(users)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(users)
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Approve a user (Admin only)
@@ -200,7 +163,7 @@ func (h *UserHandler) GetPendingUsers(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) ApproveUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
 
-	err := h.Repo.UpdateUserStatus(userID, "active")
+	err := h.Service.ApproveUser(userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -227,8 +190,8 @@ func (h *UserHandler) ApproveUser(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 func (h *UserHandler) RejectUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
-	
-	err := h.Repo.UpdateUserStatus(userID, "rejected")
+
+	err := h.Service.RejectUser(userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -247,7 +210,7 @@ func (h *UserHandler) RejectUser(w http.ResponseWriter, r *http.Request) {
 // @Tags         Admin
 // @Produce      json
 // @Param        id   path      string  true  "User ID"
-// @Success      200  {object}  UserResponseForSwagger
+// @Success      200  {object}  dto.UserResponse
 // @Failure      403  {object}  map[string]string
 // @Failure      404  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
@@ -256,7 +219,7 @@ func (h *UserHandler) RejectUser(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) GetUserByIDForAdmin(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
 
-	user, err := h.Repo.GetUserByID(userID)
+	user, err := h.Service.GetUserByID(userID)
 	if err != nil {
 		http.Error(w, "Could not fetch user profile", http.StatusInternalServerError)
 		return
@@ -266,9 +229,11 @@ func (h *UserHandler) GetUserByIDForAdmin(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	response := h.Service.MapUserToResponse(user)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Get pending user count (Admin only)
@@ -281,42 +246,38 @@ func (h *UserHandler) GetUserByIDForAdmin(w http.ResponseWriter, r *http.Request
 // @Router       /admin/users/pending/count [get]
 // @Security     BearerAuth
 func (h *UserHandler) GetPendingUserCount(w http.ResponseWriter, r *http.Request) {
-    count, err := h.Repo.GetPendingUserCount()
-    if err != nil {
-        http.Error(w, "Could not get pending user count", http.StatusInternalServerError)
-        return
-    }
+	count, err := h.Service.GetPendingUserCount()
+	if err != nil {
+		http.Error(w, "Could not get pending user count", http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]int{"count": count})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]int{"count": count})
 }
 
 // @Summary      Get all users (Admin only)
 // @Description  Retrieves a list of all users regardless of their status.
 // @Tags         Admin
 // @Produce      json
-// @Success      200  {array}   UserResponseForSwagger
+// @Success      200  {array}   dto.UserResponse
 // @Failure      403  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /admin/users/all [get]
 // @Security     BearerAuth
 func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.Repo.GetAllUsers()
+	users, err := h.Service.GetAllUsers()
 	if err != nil {
 		http.Error(w, "Could not fetch users", http.StatusInternalServerError)
-	return
+		return
 	}
+
+	response := h.Service.MapUsersToResponse(users)
 
 	w.Header().Set("Content_Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(users)
-}
-
-type updateUserRequest struct {
-	FullName string `json:"full_name" example:"John Doe"`
-	Email    string `json:"email" example:"john.doe@example.com"`
-	Role     string `json:"role" enums:"admin,instructor,student"`
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Update a user (Admin only)
@@ -325,7 +286,7 @@ type updateUserRequest struct {
 // @Accept       json
 // @Produce      json
 // @Param        id   path      string  true  "User ID"
-// @Param        user body      updateUserRequest true "User data to update"
+// @Param        user body      dto.UpdateUserRequest true "User data to update"
 // @Success      200  {object}  map[string]string
 // @Failure      400  {object}  map[string]string
 // @Failure      403  {object}  map[string]string
@@ -344,7 +305,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	userUpdates.ID = userID
 
-	err := h.Repo.UpdateUser(&userUpdates)
+	err := h.Service.UpdateUser(&userUpdates)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -372,7 +333,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
 
-	err := h.Repo.DeleteUser(userID)
+	err := h.Service.DeleteUser(userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -396,15 +357,15 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 // @Router       /admin/users/stats [get]
 // @Security     BearerAuth
 func (h *UserHandler) GetUserStats(w http.ResponseWriter, r *http.Request) {
-    stats, err := h.Repo.GetUserStats()
-    if err != nil {
-        http.Error(w, "Could not fetch user statistics", http.StatusInternalServerError)
-        return
-    }
+	stats, err := h.Service.GetUserStats()
+	if err != nil {
+		http.Error(w, "Could not fetch user statistics", http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(stats)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(stats)
 }
 
 // @Summary      Upload or update user avatar
@@ -493,7 +454,7 @@ func (h *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// --- Delete Old Avatar File ---
-	currentUser, err := h.Repo.GetUserByID(userID)
+	currentUser, err := h.Service.GetUserByID(userID)
 	if err != nil || currentUser == nil {
 		log.Printf("Warning: Error fetching user %s to delete old avatar: %v", userID, err)
 	} else if currentUser.AvatarURL.Valid && currentUser.AvatarURL.String != "" {
@@ -529,7 +490,7 @@ func (h *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	// --- End Save New File ---
 
 	// Update database with the new file URL
-	err = h.Repo.UpdateUserAvatarURL(userID, fileURL)
+	err = h.Service.UpdateUserAvatarURL(userID, fileURL)
 	if err != nil {
 		os.Remove(filePath) // Clean up file if DB update fails
 		log.Printf("Error updating avatar URL in DB for user %s: %v", userID, err)

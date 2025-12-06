@@ -1,2 +1,36 @@
-backend/.env
-frontend/.env
+# OS / Local IDE
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Go
+/backend/bin/
+/backend/vendor/
+/backend/go.work
+/backend/go.work.sum
+/backend/tmp/
+
+# Node
+/frontend/node_modules/
+/frontend/dist/
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+/frontend/.npm/
+/frontend/.cache/
+
+# Docker
+docker-compose.override.yml
+.docker-volumes/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+!/backend/.env.example
+!/frontend/.env.example
+
+# Project specific
+/uploads/

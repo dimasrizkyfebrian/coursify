@@ -1,142 +1,111 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
+	"os/signal"
+	"syscall"
+	"time"
 
-	_ "github.com/dimasrizkyfebrian/coursify/docs"
-	"github.com/go-chi/chi/v5"
-	chiMiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
-	"github.com/joho/godotenv"
-	httpSwagger "github.com/swaggo/http-swagger/v2"
-
+	"github.com/dimasrizkyfebrian/coursify/internal/config"
 	"github.com/dimasrizkyfebrian/coursify/internal/database"
 	"github.com/dimasrizkyfebrian/coursify/internal/handler"
-	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
 	"github.com/dimasrizkyfebrian/coursify/internal/repository"
+	"github.com/dimasrizkyfebrian/coursify/internal/routes"
+	"github.com/dimasrizkyfebrian/coursify/internal/service"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 // @title           Coursify API
 // @version         1.0
-// @description     This is the API documentation for the Coursify application.
+// @description     API Server for Coursify Online Course Platform
 // @termsOfService  http://swagger.io/terms/
 
-// @contact.name   Dimas Rizky Febrian
-// @contact.url    http://www.github.com/dimasrizkyfebrian
-// @contact.email  dimasrfebrian@gmail.com
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
 
 // @license.name  Apache 2.0
 // @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
 
 // @host      localhost:8080
-// @BasePath  /api
-
-// @alias sql.NullString=string
-
+// @BasePath  /
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description "Type 'Bearer' followed by a space and a JWT token."
-
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Warning: .env file not found, using environment variables from runtime")
-	}
+	// 1. Load Configuration
+	cfg := config.LoadConfig()
 
-	db := database.ConnectDB() // Database connection
+	// 2. Connect to Database
+	db := database.ConnectDB(cfg)
 
+	// 3. Initialize Repositories
+	userRepo := repository.NewUserRepository(db)
+	courseRepo := repository.NewCourseRepository(db)
+
+	// 4. Initialize Services
+	userService := service.NewUserService(userRepo, cfg)
+	courseService := service.NewCourseService(courseRepo)
+
+	// 5. Initialize Handlers
+	userHandler := handler.NewUserHandler(userService)
+	courseHandler := handler.NewCourseHandler(courseService)
+
+	// 6. Initialize Router
 	r := chi.NewRouter()
-	r.Use(chiMiddleware.Logger)
+
+	// 7. Middleware
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
 	// CORS configuration
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"}, // Allow port 5173
+		AllowedOrigins:   cfg.CorsAllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
+		MaxAge:           300,
 	}))
 
-	// --- Serve static files from "Uploads" folder ---
-	workDir, _ := os.Getwd()
-    filesDir := http.Dir(filepath.Join(workDir, "uploads"))
-    r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(filesDir)))
+	// 8. Register Routes
+	appRouter := routes.NewRouter(userHandler, courseHandler, cfg.JWTSecretKey)
+	appRouter.RegisterRoutes(r)
 
-	userRepo := repository.NewUserRepository(db)
-	userHandler := handler.NewUserHandler(userRepo)
-	courseRepo := repository.NewCourseRepository(db)
-	courseHandler := handler.NewCourseHandler(courseRepo)
-
-	// --- Swagger Documentation ---
-	r.Get("/swagger/*", httpSwagger.Handler(
-        httpSwagger.URL("http://localhost:8080/swagger/doc.json"), // Arahkan ke file doc.json
-    ))
-
-	// --- Public Routes ---
-	r.With(middleware.RateLimitMiddleware).Post("/api/register", userHandler.Register)
-	r.Post("/api/login", userHandler.Login)
-	r.Get("/api/courses", courseHandler.GetAllCoursesPublic)
-
-	// --- Protected Profile Routes ---
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.AuthMiddleware)
-
-		r.Get("/api/profile", userHandler.GetProfile)
-		r.Put("/api/profile/avatar", userHandler.UploadAvatar) 
-	})
-
-	// --- Protected Admin Routes ---
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.AuthMiddleware)
-		r.Use(middleware.AdminOnly)
-
-		r.Get("/api/admin/users/stats", userHandler.GetUserStats)
-		r.Get("/api/admin/users/pending", userHandler.GetPendingUsers)
-		r.Get("/api/admin/users/pending/count", userHandler.GetPendingUserCount)
-		r.Get("/api/admin/users/all", userHandler.GetAllUsers)
-		r.Get("/api/admin/users/{id}", userHandler.GetUserByIDForAdmin)
-		r.Put("/api/admin/users/{id}/approve", userHandler.ApproveUser)
-		r.Put("/api/admin/users/{id}/reject", userHandler.RejectUser)
-		r.Put("/api/admin/users/{id}", userHandler.UpdateUser)
-		r.Delete("/api/admin/users/{id}", userHandler.DeleteUser)
-	})
-
-	// --- Protected Instructor Routes ---
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.AuthMiddleware)
-		r.Use(middleware.InstructorOnly)
-
-		r.Get("/api/instructor/courses", courseHandler.GetMyCourses)
-		r.Post("/api/instructor/courses", courseHandler.CreateCourse)
-		r.Put("/api/instructor/courses/{id}", courseHandler.UpdateCourse)
-		r.Get("/api/instructor/courses/{id}", courseHandler.GetMyCourseDetails)
-		r.Delete("/api/instructor/courses/{id}", courseHandler.DeleteCourse)
-		r.Get("/api/instructor/courses/{id}/enrollments", courseHandler.GetEnrolledStudents)
-		r.Post("/api/instructor/courses/{id}/materials", courseHandler.AddMaterialToCourse)
-		r.Get("/api/instructor/courses/{id}/materials", courseHandler.GetMaterialsByCourseID)
-		r.Put("/api/instructor/courses/{id}/materials/{materialId}", courseHandler.UpdateMaterial)
-		r.Delete("/api/instructor/courses/{id}/materials/{materialId}", courseHandler.DeleteMaterial)
-		r.Post("/api/instructor/courses/{id}/materials/upload-pdf", courseHandler.UploadPdfMaterial)
-	})
-
-	// --- Protected Student Routes ---
-	r.Group(func(r chi.Router) {
-    r.Use(middleware.AuthMiddleware)
-    r.Use(middleware.StudentOnly)
-
-    r.Post("/api/courses/{id}/enroll", courseHandler.EnrollInCourse)
-	r.Get("/api/student/my-courses", courseHandler.GetMyEnrolledCourses)
-	r.Get("/api/student/courses/{id}", courseHandler.GetEnrolledCourseDetails)
-	})
-
-	port := ":8080"
-	log.Printf("Server is starting on port %s\n", port)
-	if err := http.ListenAndServe(port, r); err != nil {
-		log.Fatal(err)
+	// 9. Start Server with Graceful Shutdown
+	srv := &http.Server{
+		Addr:    ":" + cfg.Port,
+		Handler: r,
 	}
+
+	// Channel to listen for interrupt signals
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		log.Printf("Server is starting on port %s\n", cfg.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Could not listen on %s: %v\n", cfg.Port, err)
+		}
+	}()
+
+	// Block until a signal is received
+	<-stop
+
+	log.Println("Server is shutting down...")
+
+	// Create a context with a timeout for shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exiting")
 }

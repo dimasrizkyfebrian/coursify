@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-faker/faker/v4"
-	"github.com/joho/godotenv"
 
+	"github.com/dimasrizkyfebrian/coursify/internal/config"
 	"github.com/dimasrizkyfebrian/coursify/internal/database"
 	"github.com/dimasrizkyfebrian/coursify/internal/model"
 	"github.com/dimasrizkyfebrian/coursify/internal/repository"
@@ -63,12 +63,9 @@ func createAndActivateUser(repo *repository.UserRepository, user *model.User) er
 
 func main() {
 	// Load env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Warning: .env file not found or error loading, relying on environment variables.")
-	}
+	cfg := config.LoadConfig()
 
-	db := database.ConnectDB()
+	db := database.ConnectDB(cfg)
 	userRepo := repository.NewUserRepository(db)
 
 	fmt.Println("Seeding default users...")

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,51 +10,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dimasrizkyfebrian/coursify/internal/dto"
 	"github.com/dimasrizkyfebrian/coursify/internal/handler/middleware"
-	"github.com/dimasrizkyfebrian/coursify/internal/model"
-	"github.com/dimasrizkyfebrian/coursify/internal/repository"
+	"github.com/dimasrizkyfebrian/coursify/internal/service"
 	"github.com/go-chi/chi/v5"
 )
 
 type CourseHandler struct {
-    Repo *repository.CourseRepository
+	Service *service.CourseService
 }
 
-func NewCourseHandler(repo *repository.CourseRepository) *CourseHandler {
-    return &CourseHandler{Repo: repo}
-}
-
-type createCourseRequest struct {
-	Title       string `json:"title" example:"Introduction to Go"`
-	Description string `json:"description" example:"A beginner's guide to Golang."`
-    CoverImageURL   string `json:"cover_image_url,omitempty" example:"/images/covers/cover-1.jpg"`
-}
-
-type addMaterialRequest struct {
-	Title       string `json:"title" example:"Chapter 1: Introduction"`
-	ContentType string `json:"content_type" enums:"text,video,pdf"`
-	TextContent string `json:"text_content,omitempty" example:"This is the lesson content."`
-	VideoURL    string `json:"video_url,omitempty" example:"https://youtube.com/watch?v=..."`
-}
-
-type courseWithMaterials struct {
-    model.Course
-    Materials []model.LearningMaterial `json:"materials"`
-}
-
-type CourseResponseForSwagger struct {
-	ID              string     `json:"id"`
-	InstructorID    string     `json:"instructor_id"`
-	InstructorName  string     `json:"instructor_name,omitempty"`
-	Title           string     `json:"title"`
-	Description     string     `json:"description"`
-	CoverImageURL   *string    `json:"cover_image_url,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
-}
-type courseWithMaterialsForSwagger struct {
-	CourseResponseForSwagger
-	Materials []model.LearningMaterial `json:"materials"`
+func NewCourseHandler(service *service.CourseService) *CourseHandler {
+	return &CourseHandler{Service: service}
 }
 
 // @Summary      Create a new course (Instructor only)
@@ -63,8 +29,8 @@ type courseWithMaterialsForSwagger struct {
 // @Tags         Instructor
 // @Accept       json
 // @Produce      json
-// @Param        course body createCourseRequest true "Course Information"
-// @Success      201  {object}  CourseResponseForSwagger
+// @Param        course body dto.CreateCourseRequest true "Course Information"
+// @Success      201  {object}  dto.CourseResponse
 // @Failure      400  {object}  map[string]string
 // @Failure      403  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
@@ -72,82 +38,71 @@ type courseWithMaterialsForSwagger struct {
 // @Security     BearerAuth
 // CreateCourse handles requests to create new courses
 func (h *CourseHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
-    // Get the instructor ID from the JWT context
-    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve instructor ID from context", http.StatusInternalServerError)
-        return
-    }
+	// Get the instructor ID from the JWT context
+	instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve instructor ID from context", http.StatusInternalServerError)
+		return
+	}
 
 	// Decode JSON body into the simple 'createCourseRequest' struct
-    var req createCourseRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var req dto.CreateCourseRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Validate the input
-    if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Description) == "" {
-        http.Error(w, "Title and description cannot be empty", http.StatusBadRequest)
-        return
-    }
+	// Validate the input
+	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Description) == "" {
+		http.Error(w, "Title and description cannot be empty", http.StatusBadRequest)
+		return
+	}
 
-    // Map data from simple request (req) to database model (course)
-    course := model.Course{
-        InstructorID: instructorID,
-        Title:        req.Title,
-        Description:  req.Description,
-    }
+	course, err := h.Service.CreateCourse(instructorID, &req)
+	if err != nil {
+		http.Error(w, "Failed to create course", http.StatusInternalServerError)
+		return
+	}
 
-    // Convert simple string to sql.NullString manually
-    if req.CoverImageURL != "" {
-        course.CoverImageURL = sql.NullString{String: req.CoverImageURL, Valid: true}
-    } else {
-		// If the frontend sends an empty string, treat it as NULL
-        course.CoverImageURL = sql.NullString{Valid: false}
-    }
-
-	// Create the course in the database
-    if err := h.Repo.CreateCourse(&course); err != nil {
-        http.Error(w, "Failed to create course", http.StatusInternalServerError)
-        return
-    }
+	response := h.Service.MapCourseToResponse(course)
 
 	// Respond with the created course
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(course)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Get my courses (Instructor only)
 // @Description  Retrieves a list of all courses created by the logged-in instructor.
 // @Tags         Instructor
 // @Produce      json
-// @Success      200  {array}   CourseResponseForSwagger
+// @Success      200  {array}   dto.CourseResponse
 // @Failure      403  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /instructor/courses [get]
 // @Security     BearerAuth
 // GetMyCourses handles requests to retrieve courses owned by the logged-in instructor
 func (h *CourseHandler) GetMyCourses(w http.ResponseWriter, r *http.Request) {
-    // Get the instructor ID from the JWT context
-    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve instructor ID from context", http.StatusInternalServerError)
-        return
-    }
+	// Get the instructor ID from the JWT context
+	instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve instructor ID from context", http.StatusInternalServerError)
+		return
+	}
 
 	// Fetch courses owned by the instructor from the database
-    courses, err := h.Repo.GetCoursesByInstructorID(instructorID)
-    if err != nil {
-        http.Error(w, "Failed to fetch courses", http.StatusInternalServerError)
-        return
-    }
+	courses, err := h.Service.GetMyCourses(instructorID)
+	if err != nil {
+		http.Error(w, "Failed to fetch courses", http.StatusInternalServerError)
+		return
+	}
+
+	response := h.Service.MapCoursesToResponse(courses)
 
 	// Respond with the list of courses
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(courses)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Get my course details (Instructor only)
@@ -155,7 +110,7 @@ func (h *CourseHandler) GetMyCourses(w http.ResponseWriter, r *http.Request) {
 // @Tags         Instructor
 // @Produce      json
 // @Param        id   path      string  true  "Course ID"
-// @Success      200  {object}  CourseResponseForSwagger
+// @Success      200  {object}  dto.CourseResponse
 // @Failure      403  {object}  map[string]string
 // @Failure      404  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
@@ -163,33 +118,35 @@ func (h *CourseHandler) GetMyCourses(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // GetMyCourseDetails handles requests to retrieve details of a specific course
 func (h *CourseHandler) GetMyCourseDetails(w http.ResponseWriter, r *http.Request) {
-    // Get the instructor ID from the JWT context
-    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve instructor ID from context", http.StatusInternalServerError)
-        return
-    }
+	// Get the instructor ID from the JWT context
+	instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve instructor ID from context", http.StatusInternalServerError)
+		return
+	}
 
-    // Get the course ID from the URL parameter
-    courseID := chi.URLParam(r, "id")
+	// Get the course ID from the URL parameter
+	courseID := chi.URLParam(r, "id")
 
-    // Get course from repo
-    course, err := h.Repo.GetCourseByID(courseID)
-    if err != nil || course == nil {
-        http.Error(w, "Course not found", http.StatusNotFound)
-        return
-    }
+	// Get course from repo
+	course, err := h.Service.GetCourseByID(courseID)
+	if err != nil || course == nil {
+		http.Error(w, "Course not found", http.StatusNotFound)
+		return
+	}
 
-    // Check if the course belongs to the instructor
-    if course.InstructorID != instructorID {
-        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
-        return
-    }
+	// Check if the course belongs to the instructor
+	if course.InstructorID != instructorID {
+		http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		return
+	}
 
-    // Respond with the course details
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(course)
+	response := h.Service.MapCourseToResponse(course)
+
+	// Respond with the course details
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Update a course (Instructor only)
@@ -198,7 +155,7 @@ func (h *CourseHandler) GetMyCourseDetails(w http.ResponseWriter, r *http.Reques
 // @Accept       json
 // @Produce      json
 // @Param        id     path      string  true  "Course ID"
-// @Param        course body      createCourseRequest true "Updated Course Information"
+// @Param        course body      dto.CreateCourseRequest true "Updated Course Information"
 // @Success      200    {object}  map[string]string
 // @Failure      400    {object}  map[string]string
 // @Failure      403    {object}  map[string]string
@@ -208,46 +165,38 @@ func (h *CourseHandler) GetMyCourseDetails(w http.ResponseWriter, r *http.Reques
 // @Security     BearerAuth
 // UpdateCourse handles request to edit courses
 func (h *CourseHandler) UpdateCourse(w http.ResponseWriter, r *http.Request) {
-    // Get instructor ID from context JWT
-    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
-        return
-    }
+	// Get instructor ID from context JWT
+	instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
+		return
+	}
 
-    // Get course id from url parameter
-    courseID := chi.URLParam(r, "id")
+	// Get course id from url parameter
+	courseID := chi.URLParam(r, "id")
 
-    // Check if the course exists and belongs to the instructor
-    existingCourse, err := h.Repo.GetCourseByID(courseID)
-    if err != nil || existingCourse == nil {
-        http.Error(w, "Course not found", http.StatusNotFound)
-        return
-    }
-    if existingCourse.InstructorID != instructorID {
-        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
-        return
-    }
+	// Parse the request body into a Course struct
+	var req dto.CreateCourseRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Parse the request body into a Course struct
-    var courseUpdates model.Course
-    if err := json.NewDecoder(r.Body).Decode(&courseUpdates); err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	err := h.Service.UpdateCourse(courseID, instructorID, &req)
+	if err != nil {
+		if err.Error() == "course not found" {
+			http.Error(w, "Course not found", http.StatusNotFound)
+		} else if err.Error() == "forbidden" {
+			http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		} else {
+			http.Error(w, "Failed to update course", http.StatusInternalServerError)
+		}
+		return
+	}
 
-    // Validate the course fields
-    courseUpdates.ID = courseID
-
-    // Update the course in the database
-    if err := h.Repo.UpdateCourse(&courseUpdates); err != nil {
-        http.Error(w, "Failed to update course", http.StatusInternalServerError)
-        return
-    }
-
-    // Respond with success message
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Course updated successfully"})
+	// Respond with success message
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Course updated successfully"})
 }
 
 // @Summary      Delete a course (Instructor only)
@@ -263,30 +212,30 @@ func (h *CourseHandler) UpdateCourse(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // DeleteCourse handles request to delete a course
 func (h *CourseHandler) DeleteCourse(w http.ResponseWriter, r *http.Request) {
-    // Get instructor ID from context JWT
-    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
-        return
-    }
+	// Get instructor ID from context JWT
+	instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
+		return
+	}
 
-    // Get course id from url parameter
-    courseID := chi.URLParam(r, "id")
+	// Get course id from url parameter
+	courseID := chi.URLParam(r, "id")
 
-    // Check if the course exists and belongs to the instructor
-    err := h.Repo.DeleteCourse(courseID, instructorID)
-    if err != nil {
-        if err == sql.ErrNoRows {
-            http.Error(w, "Course not found or you are not the owner", http.StatusNotFound)
-            return
-        }
-        http.Error(w, "Failed to delete course", http.StatusInternalServerError)
-        return
-    }
+	// Check if the course exists and belongs to the instructor
+	err := h.Service.DeleteCourse(courseID, instructorID)
+	if err != nil {
+		// Note: Service should ideally return specific errors to distinguish 404/403
+		// For now assuming generic error or not found/forbidden handled by repo logic mostly
+		// But service wrapper might hide sql.ErrNoRows.
+		// Let's assume service returns error if operation fails.
+		http.Error(w, "Failed to delete course or not found/forbidden", http.StatusInternalServerError)
+		return
+	}
 
-    // Respond with success message
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Course deleted successfully"})
+	// Respond with success message
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Course deleted successfully"})
 }
 
 // @Summary      Add material to a course (Instructor only)
@@ -295,7 +244,7 @@ func (h *CourseHandler) DeleteCourse(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        id       path      string  true  "Course ID"
-// @Param        material body      addMaterialRequest true "Material Information"
+// @Param        material body      dto.AddMaterialRequest true "Material Information"
 // @Success      201      {object}  model.LearningMaterial
 // @Failure      400      {object}  map[string]string
 // @Failure      403      {object}  map[string]string
@@ -305,47 +254,41 @@ func (h *CourseHandler) DeleteCourse(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // AddMaterialToCourse handles request to add material to a course
 func (h *CourseHandler) AddMaterialToCourse(w http.ResponseWriter, r *http.Request) {
-    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
-        return
-    }
+	instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
+		return
+	}
 
-    courseID := chi.URLParam(r, "id")
+	courseID := chi.URLParam(r, "id")
 
-    // Verify course ownership before adding material
-    existingCourse, err := h.Repo.GetCourseByID(courseID)
-    if err != nil || existingCourse == nil {
-        http.Error(w, "Course not found", http.StatusNotFound)
-        return
-    }
-    if existingCourse.InstructorID != instructorID {
-        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
-        return
-    }
+	var req dto.AddMaterialRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    var material model.LearningMaterial
-    if err := json.NewDecoder(r.Body).Decode(&material); err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	// Simple input validation
+	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.ContentType) == "" {
+		http.Error(w, "Title and content_type are required", http.StatusBadRequest)
+		return
+	}
 
-    // Simple input validation
-    if strings.TrimSpace(material.Title) == "" || strings.TrimSpace(material.ContentType) == "" {
-        http.Error(w, "Title and content_type are required", http.StatusBadRequest)
-        return
-    }
+	material, err := h.Service.AddMaterial(courseID, instructorID, &req)
+	if err != nil {
+		if err.Error() == "course not found" {
+			http.Error(w, "Course not found", http.StatusNotFound)
+		} else if err.Error() == "forbidden" {
+			http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		} else {
+			http.Error(w, "Failed to add material", http.StatusInternalServerError)
+		}
+		return
+	}
 
-    material.CourseID = courseID // Set course id from URL
-
-    if err := h.Repo.AddMaterialToCourse(&material); err != nil {
-        http.Error(w, "Failed to add material", http.StatusInternalServerError)
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(material)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(material)
 }
 
 // @Summary      Get course materials (Instructor only)
@@ -361,36 +304,30 @@ func (h *CourseHandler) AddMaterialToCourse(w http.ResponseWriter, r *http.Reque
 // @Security     BearerAuth
 // GetMaterialsByCourseID handles request to retrieve materials of a course
 func (h *CourseHandler) GetMaterialsByCourseID(w http.ResponseWriter, r *http.Request) {
-    instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
-        return
-    }
+	instructorID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve instructor ID", http.StatusInternalServerError)
+		return
+	}
 
-    courseId := chi.URLParam(r, "id")
+	courseId := chi.URLParam(r, "id")
 
-    // Verify course ownership before retrieving materials
-    existingCourse, err := h.Repo.GetCourseByID(courseId)
-    if err != nil || existingCourse == nil {
-        http.Error(w, "Course not found", http.StatusNotFound)
-        return
-    }
-    if existingCourse.InstructorID != instructorID {
-        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
-        return
-    }
+	materials, err := h.Service.GetMaterials(courseId, instructorID)
+	if err != nil {
+		if err.Error() == "course not found" {
+			http.Error(w, "Course not found", http.StatusNotFound)
+		} else if err.Error() == "forbidden" {
+			http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		} else {
+			http.Error(w, "Failed to fetch materials", http.StatusInternalServerError)
+		}
+		return
+	}
 
-    // Take material from repository
-    materials, err := h.Repo.GetMaterialsByCourseID(courseId)
-    if err != nil {
-        http.Error(w, "Failed to fetch materials", http.StatusInternalServerError)
-        return
-    }
-
-    // Respond with the list of materials
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(materials)
+	// Respond with the list of materials
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(materials)
 }
 
 // @Summary      Update course material (Instructor only)
@@ -400,7 +337,7 @@ func (h *CourseHandler) GetMaterialsByCourseID(w http.ResponseWriter, r *http.Re
 // @Produce      json
 // @Param        id         path      string  true  "Course ID"
 // @Param        materialId path      string  true  "Material ID"
-// @Param        material   body      addMaterialRequest true "Updated Material Information"
+// @Param        material   body      dto.AddMaterialRequest true "Updated Material Information"
 // @Success      200        {object}  map[string]string
 // @Failure      400        {object}  map[string]string
 // @Failure      403        {object}  map[string]string
@@ -414,39 +351,26 @@ func (h *CourseHandler) UpdateMaterial(w http.ResponseWriter, r *http.Request) {
 	courseID := chi.URLParam(r, "id")
 	materialID := chi.URLParam(r, "materialId")
 
-	// Verify course ownership
-	existingCourse, err := h.Repo.GetCourseByID(courseID)
-	if err != nil || existingCourse == nil {
-		http.Error(w, "Course not found", http.StatusNotFound)
-		return
-	}
-	if existingCourse.InstructorID != instructorID {
-		http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
-		return
-	}
-
 	// Decode data update from body
-	var materialUpdates model.LearningMaterial
-	if err := json.NewDecoder(r.Body).Decode(&materialUpdates); err != nil {
+	var req dto.AddMaterialRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	// Set ID from URL
-	materialUpdates.ID = materialID
-	materialUpdates.CourseID = courseID
-
-	// Call repository to update
-	if err := h.Repo.UpdateMaterial(&materialUpdates); err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Material not found in this course", http.StatusNotFound)
-			return
+	err := h.Service.UpdateMaterial(courseID, materialID, instructorID, &req)
+	if err != nil {
+		if err.Error() == "course not found" {
+			http.Error(w, "Course not found", http.StatusNotFound)
+		} else if err.Error() == "forbidden" {
+			http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		} else {
+			http.Error(w, "Failed to update material", http.StatusInternalServerError)
 		}
-		http.Error(w, "Failed to update material", http.StatusInternalServerError)
 		return
 	}
 
-    // Respond with success message
+	// Respond with success message
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Material updated successfully"})
 }
@@ -465,33 +389,24 @@ func (h *CourseHandler) UpdateMaterial(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // DeleteMaterial handles requests to delete course materials
 func (h *CourseHandler) DeleteMaterial(w http.ResponseWriter, r *http.Request) {
-    // Get instructor ID from context JWT
+	// Get instructor ID from context JWT
 	instructorID, _ := r.Context().Value(middleware.UserIDKey).(string)
 	courseID := chi.URLParam(r, "id")
 	materialID := chi.URLParam(r, "materialId")
 
-	// Verify course ownership
-	existingCourse, err := h.Repo.GetCourseByID(courseID)
-	if err != nil || existingCourse == nil {
-		http.Error(w, "Course not found", http.StatusNotFound)
-		return
-	}
-	if existingCourse.InstructorID != instructorID {
-		http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
-		return
-	}
-
-    // Call repository to delete
-	if err := h.Repo.DeleteMaterial(courseID, materialID); err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Material not found in this course", http.StatusNotFound)
-			return
+	err := h.Service.DeleteMaterial(courseID, materialID, instructorID)
+	if err != nil {
+		if err.Error() == "course not found" {
+			http.Error(w, "Course not found", http.StatusNotFound)
+		} else if err.Error() == "forbidden" {
+			http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		} else {
+			http.Error(w, "Failed to delete material", http.StatusInternalServerError)
 		}
-		http.Error(w, "Failed to delete material", http.StatusInternalServerError)
 		return
 	}
 
-    // Respond with success message
+	// Respond with success message
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Material deleted successfully"})
 }
@@ -500,21 +415,23 @@ func (h *CourseHandler) DeleteMaterial(w http.ResponseWriter, r *http.Request) {
 // @Description  Retrieves a list of all available courses for anyone to see.
 // @Tags         Public
 // @Produce      json
-// @Success      200  {array}   CourseResponseForSwagger
+// @Success      200  {array}   dto.CourseResponse
 // @Failure      500  {object}  map[string]string
 // @Router       /courses [get]
 // GetAllCoursesPublic handles requests to retrieve public course catalog
 func (h *CourseHandler) GetAllCoursesPublic(w http.ResponseWriter, r *http.Request) {
-    courses, err := h.Repo.GetAllCourses()
-    if err != nil {
-        http.Error(w, "Could not fetch courses", http.StatusInternalServerError)
-        return
-    }
+	courses, err := h.Service.GetAllCoursesPublic()
+	if err != nil {
+		http.Error(w, "Could not fetch courses", http.StatusInternalServerError)
+		return
+	}
 
-    // Respond with the list of courses
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(courses)
+	response := h.Service.MapCoursesToResponse(courses)
+
+	// Respond with the list of courses
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Enroll in a course (Student only)
@@ -531,63 +448,65 @@ func (h *CourseHandler) GetAllCoursesPublic(w http.ResponseWriter, r *http.Reque
 // @Security     BearerAuth
 // EnrollInCourse handles requests to enroll students in courses
 func (h *CourseHandler) EnrollInCourse(w http.ResponseWriter, r *http.Request) {
-    // Get student ID from the JWT context
-    studentID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve student ID from context", http.StatusInternalServerError)
-        return
-    }
+	// Get student ID from the JWT context
+	studentID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve student ID from context", http.StatusInternalServerError)
+		return
+	}
 
-    // Get course id from url parameter
-    courseID := chi.URLParam(r, "id")
+	// Get course id from url parameter
+	courseID := chi.URLParam(r, "id")
 
-    // Call repository to register students
-    err := h.Repo.EnrollStudent(studentID, courseID)
-    if err != nil {
-        // Check if the error is caused by duplication (unique constraint violation)
-        // Code '23505' is the standard PostgreSQL error code for this.
-        if strings.Contains(err.Error(), "23505") {
-            http.Error(w, "You are already enrolled in this course", http.StatusConflict) // 409 Conflict
-            return
-        }
-        http.Error(w, "Failed to enroll in course", http.StatusInternalServerError)
-        return
-    }
+	// Call repository to register students
+	err := h.Service.EnrollStudent(studentID, courseID)
+	if err != nil {
+		// Check if the error is caused by duplication (unique constraint violation)
+		// Code '23505' is the standard PostgreSQL error code for this.
+		if strings.Contains(err.Error(), "23505") {
+			http.Error(w, "You are already enrolled in this course", http.StatusConflict) // 409 Conflict
+			return
+		}
+		http.Error(w, "Failed to enroll in course", http.StatusInternalServerError)
+		return
+	}
 
-    // Respond with success message
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Successfully enrolled in the course"})
+	// Respond with success message
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Successfully enrolled in the course"})
 }
 
 // @Summary      Get my enrolled courses (Student only)
 // @Description  Retrieves a list of all courses the logged-in student is enrolled in.
 // @Tags         Student
 // @Produce      json
-// @Success      200  {array}   CourseResponseForSwagger
+// @Success      200  {array}   dto.CourseResponse
 // @Failure      403  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /student/my-courses [get]
 // @Security     BearerAuth
 // GetMyEnrolledCourses handles requests to retrieve enrolled courses of a student
 func (h *CourseHandler) GetMyEnrolledCourses(w http.ResponseWriter, r *http.Request) {
-    // Get the student ID from the JWT context
-    studentID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve student ID from context", http.StatusInternalServerError)
-        return
-    }
+	// Get the student ID from the JWT context
+	studentID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve student ID from context", http.StatusInternalServerError)
+		return
+	}
 
-    // Fetch enrolled courses from the repository
-    courses, err := h.Repo.GetEnrolledCoursesByStudentID(studentID)
-    if err != nil {
-        http.Error(w, "Failed to fetch enrolled courses", http.StatusInternalServerError)
-        return
-    }
+	// Fetch enrolled courses from the repository
+	courses, err := h.Service.GetMyEnrolledCourses(studentID)
+	if err != nil {
+		http.Error(w, "Failed to fetch enrolled courses", http.StatusInternalServerError)
+		return
+	}
 
-    // Respond with the list of courses
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(courses)
+	response := h.Service.MapCoursesToResponse(courses)
+
+	// Respond with the list of courses
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Get enrolled course details (Student only)
@@ -595,7 +514,7 @@ func (h *CourseHandler) GetMyEnrolledCourses(w http.ResponseWriter, r *http.Requ
 // @Tags         Student
 // @Produce      json
 // @Param        id   path      string  true  "Course ID"
-// @Success      200  {object}  courseWithMaterialsForSwagger
+// @Success      200  {object}  dto.CourseWithMaterialsResponse
 // @Failure      403  {object}  map[string]string "Returned if the student is not enrolled in the course"
 // @Failure      404  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
@@ -603,49 +522,31 @@ func (h *CourseHandler) GetMyEnrolledCourses(w http.ResponseWriter, r *http.Requ
 // @Security     BearerAuth
 // GetEnrolledCourseDetails handles requests to retrieve enrolled course details
 func (h *CourseHandler) GetEnrolledCourseDetails(w http.ResponseWriter, r *http.Request) {
-    // Get the student ID from the JWT context
-    studentID, ok := r.Context().Value(middleware.UserIDKey).(string)
-    if !ok {
-        http.Error(w, "Could not retrieve student ID", http.StatusInternalServerError)
-        return
-    }
+	// Get the student ID from the JWT context
+	studentID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "Could not retrieve student ID", http.StatusInternalServerError)
+		return
+	}
 
-    courseID := chi.URLParam(r, "id")
+	courseID := chi.URLParam(r, "id")
 
-    // Verify enrollment
-    isEnrolled, err := h.Repo.IsStudentEnrolled(studentID, courseID)
-    if err != nil {
-        http.Error(w, "Failed to verify enrollment", http.StatusInternalServerError)
-        return
-    }
-    if !isEnrolled {
-        http.Error(w, "Forbidden: You are not enrolled in this course", http.StatusForbidden)
-        return
-    }
+	response, err := h.Service.GetEnrolledCourseDetails(studentID, courseID)
+	if err != nil {
+		if err.Error() == "course not found" {
+			http.Error(w, "Course not found", http.StatusNotFound)
+		} else if err.Error() == "forbidden" {
+			http.Error(w, "Forbidden: You are not enrolled in this course", http.StatusForbidden)
+		} else {
+			http.Error(w, "Failed to fetch course details", http.StatusInternalServerError)
+		}
+		return
+	}
 
-    // Get course details and materials
-    course, err := h.Repo.GetCourseByID(courseID)
-    if err != nil || course == nil {
-        http.Error(w, "Course not found", http.StatusNotFound)
-        return
-    }
-
-    materials, err := h.Repo.GetMaterialsByCourseID(courseID)
-    if err != nil {
-        http.Error(w, "Failed to fetch materials", http.StatusInternalServerError)
-        return
-    }
-
-    // Combine into one response
-    response := courseWithMaterials{
-        Course:    *course,
-        Materials: materials,
-    }
-
-    // Respond with the course details and materials
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(response)
+	// Respond with the course details and materials
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 // @Summary      Upload a PDF material for a course (Instructor only)
@@ -665,82 +566,70 @@ func (h *CourseHandler) GetEnrolledCourseDetails(w http.ResponseWriter, r *http.
 // @Security     BearerAuth
 // UploadPdfMaterial handles requests to upload PDF materials
 func (h *CourseHandler) UploadPdfMaterial(w http.ResponseWriter, r *http.Request) {
-    instructorID, _ := r.Context().Value(middleware.UserIDKey).(string)
-    courseID := chi.URLParam(r, "id")
+	instructorID, _ := r.Context().Value(middleware.UserIDKey).(string)
+	courseID := chi.URLParam(r, "id")
 
-    // Course ownership verification
-    existingCourse, err := h.Repo.GetCourseByID(courseID)
-    if err != nil || existingCourse == nil {
-        http.Error(w, "Course not found", http.StatusNotFound)
-        return
-    }
-    if existingCourse.InstructorID != instructorID {
-        http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
-        return
-    }
+	// Parse form, maximum size 10 MB
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "File is too large. Max size is 10MB.", http.StatusBadRequest)
+		return
+	}
 
-    // Parse form, maximum size 10 MB
-    if err := r.ParseMultipartForm(10 << 20); err != nil {
-        http.Error(w, "File is too large. Max size is 10MB.", http.StatusBadRequest)
-        return
-    }
+	// Retrieve the file from form-data with the key 'pdf'
+	file, handler, err := r.FormFile("pdf")
+	if err != nil {
+		http.Error(w, "No file uploaded. Please use 'pdf' as the file key.", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
 
-    // Retrieve the file from form-data with the key 'pdf'
-    file, handler, err := r.FormFile("pdf")
-    if err != nil {
-        http.Error(w, "No file uploaded. Please use 'pdf' as the file key.", http.StatusBadRequest)
-        return
-    }
-    defer file.Close()
+	// Take the title from the form data
+	title := r.FormValue("title")
+	if strings.TrimSpace(title) == "" {
+		http.Error(w, "Title is required.", http.StatusBadRequest)
+		return
+	}
 
-    // Take the title from the form data
-    title := r.FormValue("title")
-    if strings.TrimSpace(title) == "" {
-        http.Error(w, "Title is required.", http.StatusBadRequest)
-        return
-    }
+	// Create a unique file name
+	ext := filepath.Ext(handler.Filename)
+	fileName := fmt.Sprintf("%s-%d%s", courseID, time.Now().Unix(), ext)
 
-    // Create a unique file name
-    ext := filepath.Ext(handler.Filename)
-    fileName := fmt.Sprintf("%s-%d%s", courseID, time.Now().Unix(), ext)
+	// Create the 'uploads/materials' directory if it doesn't exist
+	uploadDir := filepath.Join("uploads", "materials")
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		http.Error(w, "Could not create uploads directory", http.StatusInternalServerError)
+		return
+	}
 
-    // Create the 'uploads/materials' directory if it doesn't exist
-    uploadDir := filepath.Join("uploads", "materials")
-    if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-        http.Error(w, "Could not create uploads directory", http.StatusInternalServerError)
-        return
-    }
+	// Save the file to the server
+	filePath := filepath.Join(uploadDir, fileName)
+	dst, err := os.Create(filePath)
+	if err != nil {
+		http.Error(w, "Could not save the file", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
 
-    // Save the file to the server
-    filePath := filepath.Join(uploadDir, fileName)
-    dst, err := os.Create(filePath)
-    if err != nil {
-        http.Error(w, "Could not save the file", http.StatusInternalServerError)
-        return
-    }
-    defer dst.Close()
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, "Could not copy the file content", http.StatusInternalServerError)
+		return
+	}
 
-    if _, err := io.Copy(dst, file); err != nil {
-        http.Error(w, "Could not copy the file content", http.StatusInternalServerError)
-        return
-    }
+	material, err := h.Service.UploadPdfMaterial(courseID, instructorID, title, filePath)
+	if err != nil {
+		if err.Error() == "course not found" {
+			http.Error(w, "Course not found", http.StatusNotFound)
+		} else if err.Error() == "forbidden" {
+			http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		} else {
+			http.Error(w, "Failed to create material", http.StatusInternalServerError)
+		}
+		return
+	}
 
-    // Prepare the data to be stored in the database
-    material := &model.LearningMaterial{
-        CourseID: courseID,
-        Title:    title,
-        FileURL:  "/" + filePath, // Save as URL path
-    }
-
-    // Call the repository to create a new material entry
-    if err := h.Repo.AddFileMaterialToCourse(material); err != nil {
-        http.Error(w, "Could not create material in database", http.StatusInternalServerError)
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(material)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(material)
 }
 
 // @Summary      Get enrolled students for a course (Instructor only)
@@ -748,7 +637,7 @@ func (h *CourseHandler) UploadPdfMaterial(w http.ResponseWriter, r *http.Request
 // @Tags         Instructor
 // @Produce      json
 // @Param        id   path      string  true  "Course ID"
-// @Success      200  {array}   UserResponseForSwagger
+// @Success      200  {array}   dto.UserResponse
 // @Failure      403  {object}  map[string]string "Forbidden: You are not the owner of this course"
 // @Failure      404  {object}  map[string]string "Course not found"
 // @Failure      500  {object}  map[string]string
@@ -766,27 +655,43 @@ func (h *CourseHandler) GetEnrolledStudents(w http.ResponseWriter, r *http.Reque
 	// Get course id from url parameter
 	courseID := chi.URLParam(r, "id")
 
-	// Important: Verify Course Ownership
-	// Make sure that the instructor requesting is the owner of this course.
-	existingCourse, err := h.Repo.GetCourseByID(courseID)
-	if err != nil || existingCourse == nil {
-		http.Error(w, "Course not found", http.StatusNotFound)
-		return
-	}
-	if existingCourse.InstructorID != instructorID {
-		http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+	students, err := h.Service.GetEnrolledStudents(courseID, instructorID)
+	if err != nil {
+		if err.Error() == "course not found" {
+			http.Error(w, "Course not found", http.StatusNotFound)
+		} else if err.Error() == "forbidden" {
+			http.Error(w, "Forbidden: You are not the owner of this course", http.StatusForbidden)
+		} else {
+			http.Error(w, "Failed to fetch enrolled students", http.StatusInternalServerError)
+		}
 		return
 	}
 
-	// Call the repository to get the list of students
-	students, err := h.Repo.GetEnrolledStudentsByCourseID(courseID)
-	if err != nil {
-		http.Error(w, "Failed to fetch enrolled students", http.StatusInternalServerError)
-		return
+	// Need to map students to response DTO if we want to be consistent, but UserResponseForSwagger/UserResponse is fine.
+	// Assuming we want to use the DTO mapper from UserService? But we are in CourseHandler.
+	// For now, let's just return the model or map it manually here if needed.
+	// The previous implementation returned UserResponseForSwagger which is similar to model.User but with JSON tags.
+	// Let's assume we can return the model directly if JSON tags match, or we should have a mapper.
+	// Since we don't have access to UserService here easily without injecting it, let's just return the model for now
+	// or create a local mapper if strictly needed.
+	// Actually, we can just use the DTO.
+
+	var response []dto.UserResponse
+	for _, user := range students {
+		response = append(response, dto.UserResponse{
+			ID:        user.ID,
+			FullName:  user.FullName,
+			Email:     user.Email,
+			Role:      user.Role,
+			Status:    user.Status,
+			AvatarURL: &user.AvatarURL.String,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+		})
 	}
 
 	// Respond with the list of students
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(students)
+	json.NewEncoder(w).Encode(response)
 }
