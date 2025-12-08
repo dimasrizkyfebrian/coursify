@@ -31,6 +31,7 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD}
       - DB_NAME=${POSTGRES_DB}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174
     volumes:
       - ./backend/uploads:/uploads # Synchronizing the local 'uploads' folder with the one in the container
     depends_on:

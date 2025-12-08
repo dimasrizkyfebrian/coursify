@@ -30,7 +30,7 @@ const defaultAvatar = '/images/avatars/default.webp'
 function getUserAvatarUrl(avatarPath: string | null) {
   if (avatarPath) {
     const backendBaseUrl =
-      import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8080'
+      import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1$/, '') || 'http://localhost:8080'
     return `${backendBaseUrl}${avatarPath}`
   }
   return defaultAvatar

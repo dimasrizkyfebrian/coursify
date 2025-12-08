@@ -15,7 +15,7 @@ const password = ref('')
 // Function to handle form submission
 async function handleSubmit() {
   try {
-    const response = await api.post('http://localhost:8080/api/register', {
+    const response = await api.post('/auth/register', {
       full_name: fullName.value,
       email: email.value,
       password: password.value,

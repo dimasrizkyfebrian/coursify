@@ -25,13 +25,13 @@ const { setUserFromToken } = useUserStore()
 // Function to handle form submission
 async function handleSubmit() {
   try {
-    const response = await api.post('http://localhost:8080/api/login', {
+    const response = await api.post('/auth/login', {
       email: email.value,
       password: password.value,
     })
 
     // Token received from the server
-    const token = response.data.token
+    const token = response.data.data.token
     localStorage.setItem('authToken', token)
     setUserFromToken(token)
 

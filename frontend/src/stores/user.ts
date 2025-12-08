@@ -38,7 +38,7 @@ function setBreadcrumbs(crumbs: BreadcrumbItem[]) {
 async function fetchUserProfile() {
   if (!user.value.isLoggedIn) return
   try {
-    const response = await api.get('/profile')
+    const response = await api.get('/users/profile')
     user.value.fullName = response.data.full_name
     user.value.email = response.data.email
     if (response.data.avatar_url && response.data.avatar_url.Valid) {

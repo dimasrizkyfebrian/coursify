@@ -153,7 +153,7 @@ function getUserAvatarUrl(avatarData: any) {
   if (avatarData && avatarData.Valid && avatarData.String) {
     // Construct the absolute URL using the backend base address
     const backendBaseUrl =
-      import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8080' // Fallback added
+      import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1$/, '') || 'http://localhost:8080' // Fallback added
 
     // Ensure avatarData.String starts with a slash
     const imagePath = avatarData.String.startsWith('/')
